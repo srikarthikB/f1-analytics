@@ -85,9 +85,23 @@ def get_driver_standings():
     ]
 
 @app.get("/standings/constructors")
-def get_team_standings():
+def get_constructor_standings():
     return [
         {"position": 1, "name": "Mercedes", "points": 100},
         {"position": 2, "name": "Red Bull", "points": 90},
         {"position": 3, "name": "Aston Martin", "points": 80}
     ]
+
+@app.get("/races/{year}")
+def get_races(year: int):
+    races = [
+        {"round": 1, "name": "Australian Grand Prix", "date": f"{year}-03-20", "winner": "Lewis Hamilton"},
+        {"round": 2, "name": "British Grand Prix", "date": f"{year}-07-10", "winner": "Max Verstappen"},
+        {"round": 3, "name": "German Grand Prix", "date": f"{year}-07-24", "winner": "Lewis Hamilton"}
+    ]
+    return races
+
+@app.get("/compare")
+def compare_drivers(driver1_id: int, driver2_id: int):
+    return {"driver1_id": driver1_id, "driver2_id": driver2_id}
+

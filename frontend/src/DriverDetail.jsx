@@ -27,6 +27,16 @@ function DriverDetail() {
   }, [id]);
 
   if (!driver) return <p>Loading...</p>;
+
+  const avgPoints = performanceData.length > 0
+    ? performanceData.reduce((sum, entry) => sum + entry.points, 0) / performanceData.length
+    : 0;
+
+  const consistencyScore = performanceData.length > 0
+    ? performanceData.reduce((sum, entry) => sum + Math.abs(entry.points - avgPoints), 0) / performanceData.length
+    : 0;
+
+  const bestSeason = performanceData.reduce((best, entry) => entry.points > best.points ? entry : best, { points: 0 });
   
   return (
     <div>
@@ -40,6 +50,9 @@ function DriverDetail() {
             <Tooltip />
             <Line type="monotone" dataKey="points" stroke="#8884d8" />
         </LineChart>
+        <p>Average Points per Season: {performanceData.length > 0 ? avgPoints.toFixed(2) : "Loading..."}</p>
+        <p>Consistency Score: {performanceData.length > 0 ? consistencyScore.toFixed(2) : "Loading..."}</p>
+        <p>Best Season: {bestSeason ? `${bestSeason.year} (${bestSeason.points} points)` : "Loading..."}</p>
     </div>
   );
 }
