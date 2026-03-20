@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import DriverCard from "./DriverCard";
 import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "./ThemeContext";
+import API_BASE from "./config";
 
 function Drivers() {
   const [drivers, setDrivers] = useState([]);
   const { dark } = useTheme();
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/drivers")
+    fetch(`http://${API_BASE}/drivers`)
       .then((res) => res.json())
       .then((data) => setDrivers(data))
       .catch((err) => console.log(err));

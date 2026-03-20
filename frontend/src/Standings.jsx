@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+import API_BASE from "./config";
 
 /* ── Podium config ────────────────────────────────────────────────────── */
 const PODIUM = {
@@ -64,8 +65,8 @@ function Standings() {
 
   useEffect(() => {
     const url = isConstructor
-      ? "http://127.0.0.1:8000/standings/constructors"
-      : "http://127.0.0.1:8000/standings/drivers";
+      ? `http://${API_BASE}/standings/constructors`
+      : `http://${API_BASE}/standings/drivers`;
 
     fetch(url)
       .then((res) => res.json())

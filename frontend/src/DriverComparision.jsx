@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "./ThemeContext";
+import API_BASE from "./config";
 
 const DRIVERS = [
   { value: "1", label: "L. Hamilton",   team: "Mercedes AMG",    color: "#27F4D2", number: "44" },
@@ -189,9 +190,9 @@ function DriverComparision() {
   const { dark }              = useTheme();
 
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/drivers/${driver1}/performance`)
+    fetch(`http://${API_BASE}/drivers/${driver1}/performance`)
       .then((res) => res.json()).then((data) => setData1(data));
-    fetch(`http://127.0.0.1:8000/drivers/${driver2}/performance`)
+    fetch(`http://${API_BASE}/drivers/${driver2}/performance`)
       .then((res) => res.json()).then((data) => setData2(data));
   }, [driver1, driver2]);
 

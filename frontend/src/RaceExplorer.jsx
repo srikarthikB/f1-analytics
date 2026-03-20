@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import API_BASE from "./config";
 
 const YEARS = ["2020", "2021", "2022", "2023"];
 
@@ -96,7 +97,7 @@ function RaceExplorer() {
   const [races, setRaces] = useState([]);
 
   useEffect(() => {
-    fetch(`http://localhost:8000/races/${year}`)
+    fetch(`http://${API_BASE}/races/${year}`)
       .then((response) => response.json())
       .then((data) => setRaces(data));
   }, [year]);

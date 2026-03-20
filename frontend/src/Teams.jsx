@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import TeamCard from "./TeamCard";
+import API_BASE from "./config";
 
 function Teams() {
   const [teams, setTeams] = useState([]);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/teams")
+    fetch(`http://${API_BASE}/teams`)
       .then((response) => response.json())
       .then((data) => setTeams(data));
   }, []);

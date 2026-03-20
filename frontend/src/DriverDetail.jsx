@@ -6,6 +6,7 @@ import {
 } from "recharts";
 import ThemeToggle from "./ThemeToggle";
 import { useTheme } from "./ThemeContext";
+import API_BASE from "./config";
 
 /* ── Stat card ───────────────────────────────────────────────────────────── */
 function StatCard({ label, value, sub, accent = "#ef4444", dark }) {
@@ -71,13 +72,13 @@ function DriverDetail() {
   const [performanceData, setPerformanceData] = useState([]);
 
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/drivers/${id}`)
+    fetch(`http://${API_BASE}/drivers/${id}`)
       .then((res) => res.json())
       .then((data) => setDriver(data));
   }, [id]);
 
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/drivers/${id}/performance`)
+    fetch(`http://${API_BASE}/drivers/${id}/performance`)
       .then((res) => res.json())
       .then((data) => setPerformanceData(data));
   }, [id]);

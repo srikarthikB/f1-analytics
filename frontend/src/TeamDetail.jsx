@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import API_BASE from "./config";
 
 /* ── Stat card ───────────────────────────────────────────────────────── */
 function StatCard({ label, value, unit, sub, accent = "#ef4444" }) {
@@ -127,7 +128,7 @@ function TeamDetail() {
   const { id } = useParams();
 
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/team/${id}`)
+    fetch(`http://${API_BASE}/team/${id}`)
       .then((res) => res.json())
       .then((data) => setTeam(data));
   }, [id]);
