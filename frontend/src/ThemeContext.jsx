@@ -1,23 +1,13 @@
-import { createContext, useContext, useState } from "react";
-
-const ThemeContext = createContext();
-
+// Theme system removed — app is dark mode only.
+// This file is kept as a no-op stub so no import paths break during migration.
 export function ThemeProvider({ children }) {
-  const [dark, setDark] = useState(true);
-  const toggle = () => setDark((d) => !d);
-  return (
-    <ThemeContext.Provider value={{ dark, toggle }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return children;
 }
 
 export function useTheme() {
-  return useContext(ThemeContext);
+  return { dark: true, toggle: () => {} };
 }
 
-// ─── Token maps ────────────────────────────────────────────────────────────────
-// Each key is a semantic name; value is [darkClass, lightClass]
-export function t(dark, darkVal, lightVal) {
-  return dark ? darkVal : lightVal;
+export function t(_dark, darkVal) {
+  return darkVal;
 }
