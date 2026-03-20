@@ -9,7 +9,7 @@ function Drivers() {
   const { dark } = useTheme();
 
   useEffect(() => {
-    fetch(`http://${API_BASE}/drivers`)
+    fetch(`${API_BASE}/drivers`)
       .then((res) => res.json())
       .then((data) => setDrivers(data))
       .catch((err) => console.log(err));

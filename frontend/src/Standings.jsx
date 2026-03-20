@@ -65,8 +65,8 @@ function Standings() {
 
   useEffect(() => {
     const url = isConstructor
-      ? `http://${API_BASE}/standings/constructors`
-      : `http://${API_BASE}/standings/drivers`;
+      ? `${API_BASE}/standings/constructors`
+      : `${API_BASE}/standings/drivers`;
 
     fetch(url)
       .then((res) => res.json())

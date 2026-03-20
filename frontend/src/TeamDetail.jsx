@@ -128,7 +128,7 @@ function TeamDetail() {
   const { id } = useParams();
 
   useEffect(() => {
-    fetch(`http://${API_BASE}/team/${id}`)
+    fetch(`${API_BASE}/team/${id}`)
       .then((res) => res.json())
       .then((data) => setTeam(data));
   }, [id]);

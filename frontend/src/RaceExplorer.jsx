@@ -97,7 +97,7 @@ function RaceExplorer() {
   const [races, setRaces] = useState([]);
 
   useEffect(() => {
-    fetch(`http://${API_BASE}/races/${year}`)
+    fetch(`${API_BASE}/races/${year}`)
       .then((response) => response.json())
       .then((data) => setRaces(data));
   }, [year]);

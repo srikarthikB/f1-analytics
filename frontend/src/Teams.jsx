@@ -6,7 +6,7 @@ function Teams() {
   const [teams, setTeams] = useState([]);
 
   useEffect(() => {
-    fetch(`http://${API_BASE}/teams`)
+    fetch(`${API_BASE}/teams`)
       .then((response) => response.json())
       .then((data) => setTeams(data));
   }, []);

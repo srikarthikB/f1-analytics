@@ -190,9 +190,9 @@ function DriverComparision() {
   const { dark }              = useTheme();
 
   useEffect(() => {
-    fetch(`http://${API_BASE}/drivers/${driver1}/performance`)
+    fetch(`${API_BASE}/drivers/${driver1}/performance`)
       .then((res) => res.json()).then((data) => setData1(data));
-    fetch(`http://${API_BASE}/drivers/${driver2}/performance`)
+    fetch(`${API_BASE}/drivers/${driver2}/performance`)
       .then((res) => res.json()).then((data) => setData2(data));
   }, [driver1, driver2]);
 

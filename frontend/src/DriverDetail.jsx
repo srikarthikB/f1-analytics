@@ -72,13 +72,13 @@ function DriverDetail() {
   const [performanceData, setPerformanceData] = useState([]);
 
   useEffect(() => {
-    fetch(`http://${API_BASE}/drivers/${id}`)
+    fetch(`${API_BASE}/drivers/${id}`)
       .then((res) => res.json())
       .then((data) => setDriver(data));
   }, [id]);
 
   useEffect(() => {
-    fetch(`http://${API_BASE}/drivers/${id}/performance`)
+    fetch(`${API_BASE}/drivers/${id}/performance`)
       .then((res) => res.json())
       .then((data) => setPerformanceData(data));
   }, [id]);
