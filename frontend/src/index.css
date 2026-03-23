@@ -1,41 +1,42 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-/* ── Base ─────────────────────────────────────────────────────────────── */
-body {
-  background-color: #07070f;
-  color: #ffffff;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* ── Text selection ───────────────────────────────────────────────────── */
-::selection {
-  background: rgba(239, 68, 68, 0.25);
-  color: #ffffff;
-}
-
-/* ── Hide number input spinners globally ──────────────────────────────── */
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
+* {
+  box-sizing: border-box;
   margin: 0;
-}
-input[type="number"] {
-  -moz-appearance: textfield;
+  padding: 0;
 }
 
-/* ── Hide scrollbar utility (mobile nav strip) ────────────────────────── */
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+body {
+  font-family: monospace;
+  font-size: 14px;
+  padding: 0;
+  background: #fff;
+  color: #000;
 }
 
-/* ── Smooth scrolling ─────────────────────────────────────────────────── */
-html {
-  scroll-behavior: smooth;
+button {
+  cursor: pointer;
+}
+
+a {
+  text-decoration: none;
+  color: #0000ee;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+h1 { margin-bottom: 12px; }
+h2 { margin: 16px 0 8px; }
+h3 { margin: 12px 0 6px; }
+
+table {
+  border-collapse: collapse;
+}
+
+p {
+  margin-bottom: 8px;
+}
+
+ul {
+  padding-left: 20px;
 }
