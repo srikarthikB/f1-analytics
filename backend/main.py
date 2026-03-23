@@ -790,38 +790,70 @@ def get_sessions():
 def stint_analysis(session_key: int, driver_number: int = None):
     res = requests.get(f"{OPENF1}/stints?session_key={session_key}")
     data = res.json()
+
     if not isinstance(data, list):
-        return {"stints": [], "summary": {}}
+        return {"stints": [], "summary": {}, "pits": []}
+
     if driver_number:
         data = [s for s in data if s.get("driver_number") == driver_number]
+
     result = []
 
     for s in data:
         lap_start = s.get("lap_start")
         lap_end = s.get("lap_end")
-        if lap_start is None or lap_end is None:
+        compound = s.get("compound")
+
+        if lap_start is None or lap_end is None or not compound:
             continue
+
         laps = lap_end - lap_start + 1
+
         result.append({
             "stint": s.get("stint_number"),
-            "compound": s.get("compound"),
+            "compound": compound,
             "lap_start": lap_start,
             "lap_end": lap_end,
             "laps": laps
         })
 
     result = sorted(result, key=lambda x: x["stint"] if x["stint"] else 999)
+
     if not result:
-        return {"stints": [], "summary": {}}
+        return {"stints": [], "summary": {}, "pits": []}
+
     total_laps = sum(s["laps"] for s in result)
     stint_count = len(result)
     pit_stops = max(stint_count - 1, 0)
+
     strategy = " → ".join(s["compound"][0] for s in result)
+
     tyre_usage = {}
     for s in result:
-        tyre_usage[s["compound"]] = tyre_usage.get(s["compound"], 0) + s["laps"]
+        tyre = s["compound"]
+        tyre_usage[tyre] = tyre_usage.get(tyre, 0) + s["laps"]
+
     longest = max(result, key=lambda x: x["laps"])
     shortest = min(result, key=lambda x: x["laps"])
+
+    pit_res = requests.get(f"{OPENF1}/pit?session_key={session_key}")
+    pit_data = pit_res.json()
+
+    if isinstance(pit_data, list) and driver_number:
+        pit_data = [p for p in pit_data if p.get("driver_number") == driver_number]
+
+    pit_events = []
+
+    if isinstance(pit_data, list):
+        for p in pit_data:
+            lap = p.get("lap_number")
+            duration = p.get("stop_duration")
+
+            if lap is not None:
+                pit_events.append({
+                    "lap": lap,
+                    "duration": duration
+                })
 
     return {
         "stints": result,
@@ -833,6 +865,162 @@ def stint_analysis(session_key: int, driver_number: int = None):
             "tyre_usage": tyre_usage,
             "longest_stint": longest,
             "shortest_stint": shortest
-        }
+        },
+        "pits": pit_events
     }
-    
+
+
+@app.get("/optimal_strategy")
+def get_optimal_strategy(session_key: int, driver_number: int):
+    # Fetch laps
+    res1 = requests.get(
+        f"{OPENF1}/laps?session_key={session_key}&driver_number={driver_number}"
+    )
+    laps = res1.json()
+
+    if not isinstance(laps, list) or len(laps) == 0:
+        return {"error": "No lap data"}
+
+    # Fetch stints
+    res2 = requests.get(
+        f"{OPENF1}/stints?session_key={session_key}&driver_number={driver_number}"
+    )
+    stints = res2.json()
+
+    if not isinstance(stints, list) or len(stints) == 0:
+        return {"error": "No stint data"}
+
+    # --- REAL TOTAL TIME ---
+    lap_times = []
+    for lap in laps:
+        lap_time = lap.get("lap_duration")
+        if lap_time is not None and lap_time < 200:
+            lap_times.append(lap_time)
+
+    if len(lap_times) == 0:
+        return {"error": "No valid lap times"}
+
+    real_total = sum(lap_times)
+    total_laps = len(lap_times)
+
+    # --- GROUP STINTS (FIX DUPLICATES) ---
+    stint_groups = {}
+
+    for stint in stints:
+        num = stint.get("stint_number")
+        if num is None:
+            continue
+
+        if num not in stint_groups:
+            stint_groups[num] = []
+
+        stint_groups[num].append(stint)
+
+    merged_stints = []
+
+    for num in sorted(stint_groups.keys()):
+        group = stint_groups[num]
+
+        lap_start = min(s.get("lap_start", 9999) for s in group)
+        lap_end = max(s.get("lap_end", 0) for s in group)
+
+        merged_stints.append({
+            "stint_number": num,
+            "lap_start": lap_start,
+            "lap_end": lap_end
+        })
+
+    # --- STINT ANALYSIS ---
+    stint_avgs = []
+
+    for stint in merged_stints:
+        start = stint.get("lap_start")
+        end = stint.get("lap_end")
+
+        if start is None or end is None:
+            continue
+
+        stint_laps = [
+            lap.get("lap_duration")
+            for lap in laps
+            if lap.get("lap_number") is not None
+            and start <= lap.get("lap_number") <= end
+            and lap.get("lap_duration") is not None
+            and lap.get("lap_duration") < 200
+        ]
+
+        if len(stint_laps) == 0:
+            continue
+
+        avg_time = sum(stint_laps) / len(stint_laps)
+        best_lap = min(stint_laps)
+
+        degradation_laps = sum(
+            1 for lap_time in stint_laps if lap_time > best_lap + 1.5
+        )
+
+        stint_data = {
+            "stint": stint.get("stint_number"),
+            "avg": avg_time,
+            "laps": len(stint_laps),
+            "total_time": sum(stint_laps),
+            "best_lap": best_lap,
+            "degradation_laps": degradation_laps,
+            "overstayed": degradation_laps > 3
+        }
+
+        stint_avgs.append(stint_data)
+
+    if len(stint_avgs) == 0:
+        return {"error": "No valid stint averages"}
+
+    # --- CLEAN STINTS ---
+    filtered_stints = [
+        s for s in stint_avgs
+        if s["laps"] >= total_laps * 0.15
+    ]
+
+    filtered_stints.sort(key=lambda x: x["stint"])
+
+    # renumber cleanly
+    for i, stint in enumerate(filtered_stints):
+        stint["stint"] = i + 1
+
+    stint_avgs = filtered_stints
+
+    # --- OPTIMAL STRATEGY ---
+    best_avg = min(s["avg"] for s in stint_avgs)
+
+    problem_stint = None
+    best_stint = None
+    max_loss = -1
+    min_loss = float("inf")
+
+    for stint in stint_avgs:
+        expected_time = stint["laps"] * best_avg
+        actual_time = stint["total_time"]
+
+        loss = max(0, actual_time - expected_time)
+        stint["time_loss"] = loss
+
+        if loss > max_loss:
+            max_loss = loss
+            problem_stint = stint
+
+        if loss < min_loss:
+            min_loss = loss
+            best_stint = stint
+
+    optimal_total = best_avg * total_laps
+    time_gain = real_total - optimal_total
+
+    return {
+        "real_time": real_total,
+        "optimal_time": optimal_total,
+        "time_gain": time_gain,
+        "total_laps": total_laps,
+        "best_stint_avg": best_avg,
+        "stints": stint_avgs,
+        "problem_stint": problem_stint,
+        "best_stint": best_stint
+    }
