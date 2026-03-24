@@ -748,20 +748,250 @@ def get_laps(session_key: int, driver_number: int):
 # ── /consistency ──────────────────────────────────────────────────────────────
 @app.get("/consistency")
 def get_consistency(session_key: int, driver_number: int):
-    laps  = get_laps(session_key, driver_number)
-    times = [l["time"] for l in laps if l["time"] is not None and l["time"] < 500]
-    if len(times) == 0:
-        return {"driver_number": driver_number, "consistency_score": None, "laps_count": 0}
-    mean     = sum(times) / len(times)
-    variance = sum((t - mean) ** 2 for t in times) / len(times)
-    std_dev  = math.sqrt(variance)
+    laps = get_laps(session_key, driver_number)
+
+    # Step 1: Filter valid racing laps
+    times = [
+        l["time"]
+        for l in laps
+        if l["time"] is not None
+        and 60 < l["time"] < 200   # 🚨 key fix
+    ]
+
+    if len(times) < 5:
+        return {
+            "driver_number": driver_number,
+            "consistency_score": None,
+            "laps_count": len(times)
+        }
+
+    # Step 2: Remove outliers (top 10% slow laps)
+    sorted_times = sorted(times)
+    cutoff_index = int(len(sorted_times) * 0.9)
+    clean_times = sorted_times[:cutoff_index]
+
+    # Step 3: Compute stats
+    mean = sum(clean_times) / len(clean_times)
+    variance = sum((t - mean) ** 2 for t in clean_times) / len(clean_times)
+    std_dev = math.sqrt(variance)
+
     return {
-        "driver_number":     driver_number,
+        "driver_number": driver_number,
         "consistency_score": round(std_dev, 3),
-        "laps_count":        len(times),
-        "avg_lap_time":      round(mean, 3),
+        "laps_count": len(clean_times),
+        "avg_lap_time": round(mean, 3),
     }
 
+
+
+# ── /fantasy_score ─────────────────────────────────────────────────────────────
+# Scoring system:
+#   Finish position  → F1 points table
+#   Positions gained → +2/-2 per position vs starting grid
+#   Overtakes        → +1 each, capped at 10
+#   DNF / DSQ        → -10 / -20
+#   Strategy score   → reuses optimal_strategy: time_gain% → +10/+5/0
+#   Consistency      → reuses get_consistency: std_dev → +10/+5/0
+#   Team score       → sum of the two team drivers that appear in driver_numbers
+
+FINISH_POINTS = {1:25, 2:18, 3:15, 4:12, 5:10, 6:8, 7:6, 8:4, 9:2, 10:1}
+
+@app.get("/fantasy_score")
+def fantasy_score(session_key: int, driver_numbers: str, team_name: str):
+    """
+    driver_numbers: comma-separated list of exactly 3 driver numbers e.g. "1,4,16"
+    team_name:      exact team name string e.g. "McLaren"
+    """
+    try:
+        drv_nums = [int(x.strip()) for x in driver_numbers.split(",") if x.strip()]
+    except ValueError:
+        return {"error": "driver_numbers must be comma-separated integers"}
+
+    if len(drv_nums) != 3:
+        return {"error": "Exactly 3 driver_numbers required"}
+
+    # ── 1. Fetch shared data in one pass each ─────────────────────────────────
+    result_data = requests.get(f"{OPENF1}/session_result?session_key={session_key}").json()
+    result_map  = {}
+    if isinstance(result_data, list):
+        for r in result_data:
+            num = r.get("driver_number")
+            if num is not None:
+                result_map[int(num)] = r
+
+    grid_data = requests.get(f"{OPENF1}/starting_grid?session_key={session_key}").json()
+    grid_map  = {}
+    if isinstance(grid_data, list):
+        for g in grid_data:
+            num = g.get("driver_number")
+            if num is not None:
+                grid_map[int(num)] = g.get("position")
+
+    overtake_data = requests.get(f"{OPENF1}/overtakes?session_key={session_key}").json()
+    overtake_counts = {}
+    if isinstance(overtake_data, list):
+        for o in overtake_data:
+            num = o.get("overtaking_driver_number")
+            if num is not None:
+                overtake_counts[int(num)] = overtake_counts.get(int(num), 0) + 1
+
+    # driver info for team mapping
+    drv_info_data = requests.get(f"{OPENF1}/drivers?session_key={session_key}").json()
+    drv_info_map  = {}
+    if isinstance(drv_info_data, list):
+        for d in drv_info_data:
+            num = d.get("driver_number")
+            if num is not None:
+                drv_info_map[int(num)] = d
+
+    # ── 2. Score each driver ──────────────────────────────────────────────────
+    driver_scores = []
+
+    for num in drv_nums:
+        result   = result_map.get(num, {})
+        pos      = result.get("position")
+        dnf      = result.get("dnf", False)
+        dsq      = result.get("dsq", False)
+        grid_pos = grid_map.get(num)
+
+        # Finish position points
+        finish_pts = 0
+        if not dnf and not dsq and pos is not None:
+            finish_pts = FINISH_POINTS.get(int(pos), 0)
+
+        # Positions gained/lost vs starting grid
+        positions_pts = 0
+        if grid_pos is not None and pos is not None and not dnf and not dsq:
+            gained = int(grid_pos) - int(pos)   # positive = moved forward
+            positions_pts = gained * 2
+
+        # Overtakes (capped at 10)
+        raw_overtakes = overtake_counts.get(num, 0)
+        overtake_pts = int(raw_overtakes * 0.5)
+
+        # DNF / DSQ penalty
+        penalty = 0
+        if dsq:
+            penalty = -20
+        elif dnf:
+            penalty = -10
+
+        # Strategy score — reuse get_optimal_strategy
+        strategy_pts = 0
+        try:
+            opt = get_optimal_strategy(session_key, num)
+            if isinstance(opt, dict) and "time_gain" in opt and "real_time" in opt:
+                real_t = opt["real_time"]
+                gain   = opt["time_gain"]
+                if real_t > 0:
+                    pct = (gain / real_t) * 100
+                    if pct < 2:
+                        strategy_pts = 10
+                    elif pct < 5:
+                        strategy_pts = 5
+        except Exception:
+            pass
+
+        # Consistency score — reuse get_consistency
+        consistency_pts = 0
+        try:
+            cons = get_consistency(session_key, num)
+            if isinstance(cons, dict) and cons.get("consistency_score") is not None:
+                std = cons["consistency_score"]
+                if std < 1.0:
+                    consistency_pts = 10
+                elif std < 2.5:
+                    consistency_pts = 5
+        except Exception:
+            pass
+
+        total = finish_pts + positions_pts + overtake_pts + penalty + strategy_pts + consistency_pts
+
+        driver_scores.append({
+            "driver_number": num,
+            "full_name":     drv_info_map.get(num, {}).get("full_name", f"Driver {num}"),
+            "total":         total,
+            "breakdown": {
+                "finish":      finish_pts,
+                "positions":   positions_pts,
+                "overtakes":   overtake_pts,
+                "penalty":     penalty,
+                "strategy":    strategy_pts,
+                "consistency": consistency_pts,
+            }
+        })
+
+    # ── 3. Team score — calculate for BOTH team drivers ─────────────
+
+    team_drivers = [
+        num for num, info in drv_info_map.items()
+        if info.get("team_name") == team_name
+    ]
+
+    team_score = 0
+
+    for num in team_drivers:
+        result   = result_map.get(num, {})
+        pos      = result.get("position")
+        dnf      = result.get("dnf", False)
+        dsq      = result.get("dsq", False)
+        grid_pos = grid_map.get(num)
+
+        # Finish
+        finish_pts = 0
+        if not dnf and not dsq and pos is not None:
+            finish_pts = FINISH_POINTS.get(int(pos), 0)
+
+        # Positions
+        positions_pts = 0
+        if grid_pos is not None and pos is not None and not dnf and not dsq:
+            gained = int(grid_pos) - int(pos)
+            positions_pts = gained * 2
+
+        # Overtakes
+        overtake_pts = int(overtake_counts.get(num, 0) * 0.5)
+
+        # Penalty
+        penalty = -20 if dsq else (-10 if dnf else 0)
+
+        # Strategy
+        strategy_pts = 0
+        try:
+            opt = get_optimal_strategy(session_key, num)
+            if isinstance(opt, dict) and "real_time" in opt:
+                pct = (opt["time_gain"] / opt["real_time"]) * 100
+                if pct < 2:
+                    strategy_pts = 10
+                elif pct < 5:
+                    strategy_pts = 5
+        except:
+            pass
+
+        # Consistency
+        consistency_pts = 0
+        try:
+            cons = get_consistency(session_key, num)
+            std = cons.get("consistency_score")
+            if std is not None:
+                if std < 1.0:
+                    consistency_pts = 10
+                elif std < 2.5:
+                    consistency_pts = 5
+        except:
+            pass
+
+        team_score += (
+            finish_pts + positions_pts + overtake_pts +
+            penalty + strategy_pts + consistency_pts
+        )
+
+    total_score = sum(d["total"] for d in driver_scores) + team_score
+
+    return {
+        "drivers":     driver_scores,
+        "team_score":  team_score,
+        "total_score": total_score,
+    }
 
 # ── /sessions ─────────────────────────────────────────────────────────────────
 @app.get("/sessions")

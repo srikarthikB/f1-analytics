@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API_BASE from "./config";
+import DriverAvatar from "./DriverAvatar";                     // ← ADDED
 
 function TeamDetail() {
   const { id } = useParams();
@@ -31,10 +32,7 @@ function TeamDetail() {
 
   return (
     <div>
-      <h1 style={{ color: team.color }}>
-        {team.name}
-      </h1>
-
+      <h1 style={{ color: team.color }}>{team.name}</h1>
       <p>Position: P{team.position}</p>
       <p>Points: {team.points}</p>
 
@@ -46,17 +44,22 @@ function TeamDetail() {
         <ul>
           {team.drivers.map(d => (
             <li key={d.driver_number}>
-              {d.name} (#{d.driver_number})
+              {/* CHANGED: replaced "{d.name} (#{d.driver_number})" with DriverAvatar.
+                  team.drivers uses d.name not d.full_name, so we normalize before passing */}
+              <DriverAvatar
+                driver={{ ...d, full_name: d.name ?? d.full_name, team_name: team.name, team_colour: team.color }}
+                size={40}
+              />
             </li>
           ))}
         </ul>
       ) : (
         <p>No drivers found.</p>
       )}
+
       <hr />
 
       <h2>Team History</h2>
-
       {history.length === 0 ? (
         <p>No history data.</p>
       ) : (

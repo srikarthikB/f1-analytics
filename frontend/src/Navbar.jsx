@@ -9,6 +9,7 @@ function Navbar() {
       <Link to="/races">Races</Link>
       <Link to="/compare">Compare</Link>
       <Link to="/strategy-simulator">Strategy</Link>
+      <Link to="/fantasy">Fantasy</Link>
     </nav>
   );
 }

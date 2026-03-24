@@ -10,6 +10,7 @@ import DriverComparision from "./DriverComparision.jsx";
 import StrategySimulator from "./StrategySimulator.jsx";
 import RaceDetail from "./RaceDetail";
 import StintAnalysis from "./StintAnalysis.jsx";
+import FantasyMode from "./Fantasymode.jsx";
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
 
           <Route path="/strategy-simulator" element={<StrategySimulator />} />
           <Route path="/stints/:session_key"     element={<StintAnalysis/>} />
+          <Route path="/fantasy"                  element={<FantasyMode/>} />
         </Routes>
       </main>
     </BrowserRouter>

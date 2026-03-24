@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import API_BASE from "./config";
+import DriverAvatar from "./DriverAvatar";                     // ← ADDED
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -12,7 +13,6 @@ function DriverComparision() {
   const [loading, setLoading]       = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
 
-  // Fetch driver list
   useEffect(() => {
     fetch(`${API_BASE}/drivers`)
       .then(res => res.json())
@@ -27,24 +27,19 @@ function DriverComparision() {
       .catch(() => setLoading(false));
   }, []);
 
-  // Fetch stats — always uses current year, no year param needed
   useEffect(() => {
     if (!driver1Id || !driver2Id) return;
-
     setStatsLoading(true);
     setStats1(null);
     setStats2(null);
-
     fetch(`${API_BASE}/compare-fast?driver1=${driver1Id}&driver2=${driver2Id}&year=${CURRENT_YEAR}`)
       .then(res => res.json())
       .then(data => {
-        console.log("Compare-fast response:", data);
         setStats1(data.driver1 && typeof data.driver1 === "object" ? data.driver1 : {});
         setStats2(data.driver2 && typeof data.driver2 === "object" ? data.driver2 : {});
         setStatsLoading(false);
       })
       .catch(err => {
-        console.error("Compare-fast error:", err);
         setStats1({});
         setStats2({});
         setStatsLoading(false);
@@ -60,7 +55,6 @@ function DriverComparision() {
     <div>
       <h1>Driver Comparison ({CURRENT_YEAR} Season)</h1>
 
-      {/* Driver selectors */}
       <div style={{ marginBottom: "16px" }}>
         <label>Driver 1: </label>
         <select value={driver1Id} onChange={e => setDriver1Id(e.target.value)}>
@@ -81,17 +75,25 @@ function DriverComparision() {
         </select>
       </div>
 
-      {/* Loading state */}
       {statsLoading && <p>Loading stats...</p>}
 
-      {/* Comparison table */}
       {!statsLoading && stats1 !== null && stats2 !== null && (
         <table border="1" cellPadding="10">
           <thead>
             <tr>
               <th>Stat</th>
-              <th>{d1?.full_name ?? "Driver 1"}</th>
-              <th>{d2?.full_name ?? "Driver 2"}</th>
+              {/* CHANGED: replaced {d1?.full_name ?? "Driver 1"} with DriverAvatar */}
+              <th>
+                {d1
+                  ? <DriverAvatar driver={d1} size={32} />
+                  : "Driver 1"}
+              </th>
+              {/* CHANGED: replaced {d2?.full_name ?? "Driver 2"} with DriverAvatar */}
+              <th>
+                {d2
+                  ? <DriverAvatar driver={d2} size={32} />
+                  : "Driver 2"}
+              </th>
             </tr>
           </thead>
           <tbody>

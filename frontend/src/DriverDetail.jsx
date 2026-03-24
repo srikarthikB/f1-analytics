@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import API_BASE from "./config";
+import DriverAvatar from "./DriverAvatar";                     // ← ADDED
 
 function DriverDetail() {
   const { id } = useParams();
@@ -18,14 +19,13 @@ function DriverDetail() {
   const [lapsLoading, setLapsLoading] = useState(false);
   const [error, setError]             = useState(null);
 
-  // ✅ Fetch driver info + set session_key (PRIMARY SOURCE)
   useEffect(() => {
     fetch(`${API_BASE}/drivers/${id}`)
       .then(res => res.json())
       .then(data => {
         if (!data.error) {
           setDriver(data);
-          setSessionKey(data.session_key); // ✅ MAIN FIX
+          setSessionKey(data.session_key);
         } else {
           setDriver(null);
         }
@@ -37,61 +37,45 @@ function DriverDetail() {
       });
   }, [id]);
 
-  // Fetch career performance
   useEffect(() => {
     fetch(`${API_BASE}/drivers/${id}/performance`)
       .then(res => res.json())
       .then(data => setPerformance(Array.isArray(data) ? data : []));
   }, [id]);
 
-  // Fetch sessions list (ONLY for dropdown)
   useEffect(() => {
     fetch(`${API_BASE}/sessions`)
       .then(res => res.json())
       .then(data => {
         if (!Array.isArray(data)) return;
-
         setSessions(data);
-
-        const uniqueYears = [...new Set(data.map(s => s.year))]
-          .sort((a, b) => b - a);
-
+        const uniqueYears = [...new Set(data.map(s => s.year))].sort((a, b) => b - a);
         setYears(uniqueYears);
       });
   }, []);
 
-  // ✅ Only override sessionKey when user selects manually
   useEffect(() => {
     if (selectedSession?.session_key) {
       setSessionKey(selectedSession.session_key);
     }
   }, [selectedSession]);
 
-  // Fetch laps + consistency
   useEffect(() => {
     if (!sessionKey) return;
-
     setLapsLoading(true);
-
     Promise.all([
-      fetch(`${API_BASE}/laps?session_key=${sessionKey}&driver_number=${id}`)
-        .then(r => r.json()),
-      fetch(`${API_BASE}/consistency?session_key=${sessionKey}&driver_number=${id}`)
-        .then(r => r.json()),
+      fetch(`${API_BASE}/laps?session_key=${sessionKey}&driver_number=${id}`).then(r => r.json()),
+      fetch(`${API_BASE}/consistency?session_key=${sessionKey}&driver_number=${id}`).then(r => r.json()),
     ])
       .then(([lapsData, consData]) => {
         setLaps(Array.isArray(lapsData) ? lapsData : []);
-        setConsistency(
-          consData && typeof consData === "object" ? consData : null
-        );
+        setConsistency(consData && typeof consData === "object" ? consData : null);
         setLapsLoading(false);
       })
       .catch(() => setLapsLoading(false));
   }, [sessionKey, id]);
 
-  const raceSessions = sessions.filter(
-    s => String(s.year) === String(selectedYear)
-  );
+  const raceSessions = sessions.filter(s => String(s.year) === String(selectedYear));
 
   if (loading || !sessionKey) return <p>Loading driver...</p>;
   if (error) return <p>Error: {error}</p>;
@@ -99,8 +83,9 @@ function DriverDetail() {
 
   return (
     <div>
-      <h1>{driver.full_name}</h1>
-      <p>Team: {driver.team_name}</p>
+      {/* CHANGED: replaced <h1>{driver.full_name}</h1> + separate team/number with DriverAvatar */}
+      <DriverAvatar driver={driver} size={64} />
+
       <p>Number: #{driver.driver_number}</p>
       <p>Points: {driver.points ?? "—"}</p>
 
@@ -132,7 +117,6 @@ function DriverDetail() {
 
       <h2>Lap Times</h2>
 
-      {/* Dropdown */}
       <div style={{ marginBottom: "10px" }}>
         <label>Year: </label>
         <select
@@ -145,9 +129,7 @@ function DriverDetail() {
         >
           <option value="">Select year</option>
           {years.map(y => (
-            <option key={y} value={y}>
-              {y}
-            </option>
+            <option key={y} value={y}>{y}</option>
           ))}
         </select>
 
@@ -156,9 +138,7 @@ function DriverDetail() {
           disabled={!selectedYear || raceSessions.length === 0}
           value={selectedSession?.session_key ?? ""}
           onChange={e => {
-            const s = raceSessions.find(
-              r => String(r.session_key) === e.target.value
-            );
+            const s = raceSessions.find(r => String(r.session_key) === e.target.value);
             setSelectedSession(s ?? null);
           }}
         >
