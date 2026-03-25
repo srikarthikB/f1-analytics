@@ -8,6 +8,7 @@ function RaceExplorer() {
   const [races, setRaces] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [sessionsCache, setSessionsCache] = useState(null);
 
   const navigate = useNavigate();
 

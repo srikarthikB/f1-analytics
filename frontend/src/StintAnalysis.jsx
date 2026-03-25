@@ -40,27 +40,28 @@ function StintAnalysis() {
   useEffect(() => {
     if (!selectedDriver) return;
 
-    fetch(`${API_BASE}/optimal_strategy?session_key=${session_key}&driver_number=${selectedDriver}`)
-        .then(res => res.json())
-        .then(data => setOptimal(data));
-    }, [selectedDriver]);
-
-  const fetchStints = () => {
-    if (!session_key || !selectedDriver) return;
+    if (optimal?.driver === selectedDriver) return;
 
     setLoading(true);
 
-    fetch(
-      `${API_BASE}/stint-analysis?session_key=${session_key}&driver_number=${selectedDriver}`
-    )
-      .then(res => res.json())
-      .then(data => {
-        setStints(Array.isArray(data.stints) ? data.stints : []);
-        setSummary(data.summary || null);
-        setPits(Array.isArray(data.pits) ? data.pits : []);
-        setLoading(false);
-      });
-  };
+    Promise.all([
+      fetch(`${API_BASE}/optimal_strategy?session_key=${session_key}&driver_number=${selectedDriver}`),
+      fetch(`${API_BASE}/stint-analysis?session_key=${session_key}&driver_number=${selectedDriver}`)
+    ])
+      .then(async ([optRes, stintRes]) => {
+        const optData = await optRes.json();
+        const stintData = await stintRes.json();
+
+        setOptimal({ ...optData, driver: selectedDriver });
+
+        setStints(Array.isArray(stintData.stints) ? stintData.stints : []);
+        setSummary(stintData.summary || null);
+        setPits(Array.isArray(stintData.pits) ? stintData.pits : []);
+      })
+      .catch(() => console.error("Failed to fetch stint data"))
+      .finally(() => setLoading(false));
+
+  }, [selectedDriver, session_key]);
 
   const totalLaps = summary?.total_laps || 1;
 

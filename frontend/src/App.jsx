@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./Navbar";
+import Dashboard from "./Dashboard.jsx";        // ← new
 import Drivers from "./drivers.jsx";
 import DriverDetail from "./DriverDetail.jsx";
 import Teams from "./Teams.jsx";
@@ -16,10 +17,11 @@ function App() {
   return (
     <BrowserRouter>
       <Navbar />
-      <main style={{ padding: "20px" }}>
+      <main style={{ padding: "0" }}>        {/* removed padding — Dashboard handles its own spacing */}
         <Routes>
 
-          <Route path="/" element={<Drivers />} />
+          <Route path="/" element={<Dashboard />} />    {/* ← Dashboard is now default */}
+
           <Route path="/drivers" element={<Drivers />} />
           <Route path="/driver/:id" element={<DriverDetail />} />
 
@@ -35,8 +37,9 @@ function App() {
           <Route path="/compare" element={<DriverComparision />} />
 
           <Route path="/strategy-simulator" element={<StrategySimulator />} />
-          <Route path="/stints/:session_key"     element={<StintAnalysis/>} />
-          <Route path="/fantasy"                  element={<FantasyMode/>} />
+          <Route path="/stints/:session_key" element={<StintAnalysis />} />
+          <Route path="/fantasy" element={<FantasyMode />} />
+
         </Routes>
       </main>
     </BrowserRouter>
