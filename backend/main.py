@@ -172,7 +172,11 @@ def get_standings(year: int = None):
     teams_data = fetch_openf1(f"{OPENF1}/championship_teams?session_key={session_key}")
     drv_data = fetch_openf1(f"{OPENF1}/drivers?session_key={session_key}")
 
-    driver_map = {d.get("driver_number"): d for d in drv_data if d.get("driver_number")}
+    driver_map = {}
+
+    for d in drv_data:
+        if isinstance(d, dict) and d.get("driver_number"):
+            driver_map[d.get("driver_number")] = d
 
     drivers_result = []
     if isinstance(drivers_data, list):
@@ -184,7 +188,7 @@ def get_standings(year: int = None):
                 "full_name":     info.get("full_name", "—"),
                 "team_name":     info.get("team_name", "—"),
                 "points":        d.get("points_current"),
-                "position":      d.get("position"),
+                "position": d.get("position") or d.get("position_current"),
             })
 
     teams_result = []

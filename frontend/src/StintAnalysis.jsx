@@ -2,356 +2,439 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import API_BASE from "./config";
 
-const TYRE_COLORS = {
-  SOFT: "#ff4d4d",
-  MEDIUM: "#ffd633",
-  HARD: "#ffffff"
-};
+const TYRE_COLORS = { SOFT: "#e10600", MEDIUM: "#f5c518", HARD: "#f0f0f0" };
+const TYRE_LABEL  = { SOFT: "S", MEDIUM: "M", HARD: "H" };
+
+function formatTime(seconds) {
+  if (seconds == null || isNaN(seconds)) return "--:--:--";
+
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+
+  return `${hrs.toString().padStart(2, "0")}:` +
+         `${mins.toString().padStart(2, "0")}:` +
+         `${secs.toString().padStart(2, "0")}.` +
+         `${ms.toString().padStart(3, "0")}`;
+}
 
 function StintAnalysis() {
+  /* ── NEW logic: all state & API calls preserved exactly ── */
   const { session_key } = useParams();
 
-  const [drivers, setDrivers] = useState([]);
+  const [drivers, setDrivers]               = useState([]);
   const [selectedDriver, setSelectedDriver] = useState("");
-
-  const [stints, setStints] = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [pits, setPits] = useState([]);
-
-  const [loading, setLoading] = useState(false);
-  const [optimal, setOptimal] = useState(null);
+  const [stints, setStints]                 = useState([]);
+  const [summary, setSummary]               = useState(null);
+  const [pits, setPits]                     = useState([]);
+  const [optimal, setOptimal]               = useState(null);
+  const [loading, setLoading]               = useState(false);
+  const [cache, setCache]                   = useState({});
 
   useEffect(() => {
     if (!session_key) return;
-
     fetch(`${API_BASE}/drivers?session_key=${session_key}`)
       .then(res => res.json())
       .then(data => {
         if (!Array.isArray(data)) return;
-
         setDrivers(data);
-
-        if (data.length > 0) {
-          setSelectedDriver(data[0].driver_number);
-        }
+        if (data.length > 0) setSelectedDriver(String(data[0].driver_number));
       });
   }, [session_key]);
 
   useEffect(() => {
     if (!selectedDriver) return;
-
-    if (optimal?.driver === selectedDriver) return;
-
+    if (cache[selectedDriver]) {
+      const c = cache[selectedDriver];
+      setStints(c.stints); setSummary(c.summary); setPits(c.pits); setOptimal(c.optimal);
+      return;
+    }
     setLoading(true);
-
     Promise.all([
-      fetch(`${API_BASE}/optimal_strategy?session_key=${session_key}&driver_number=${selectedDriver}`),
-      fetch(`${API_BASE}/stint-analysis?session_key=${session_key}&driver_number=${selectedDriver}`)
+      fetch(`${API_BASE}/optimal_strategy?session_key=${session_key}&driver_number=${selectedDriver}`).then(r => r.json()),
+      fetch(`${API_BASE}/stint-analysis?session_key=${session_key}&driver_number=${selectedDriver}`).then(r => r.json()),
     ])
-      .then(async ([optRes, stintRes]) => {
-        const optData = await optRes.json();
-        const stintData = await stintRes.json();
-
-        setOptimal({ ...optData, driver: selectedDriver });
-
-        setStints(Array.isArray(stintData.stints) ? stintData.stints : []);
-        setSummary(stintData.summary || null);
-        setPits(Array.isArray(stintData.pits) ? stintData.pits : []);
+      .then(([optData, stintData]) => {
+        const newStints  = Array.isArray(stintData.stints)  ? stintData.stints  : [];
+        const newSummary = stintData.summary || null;
+        const newPits    = Array.isArray(stintData.pits)    ? stintData.pits    : [];
+        setStints(newStints); setSummary(newSummary); setPits(newPits); setOptimal(optData);
+        setCache(prev => ({ ...prev, [selectedDriver]: { stints: newStints, summary: newSummary, pits: newPits, optimal: optData } }));
       })
-      .catch(() => console.error("Failed to fetch stint data"))
+      .catch(() => {})
       .finally(() => setLoading(false));
-
   }, [selectedDriver, session_key]);
 
   const totalLaps = summary?.total_laps || 1;
+  const maxLoss   = optimal?.stints ? Math.max(...optimal.stints.map(s => s.time_loss || 0)) : 0;
 
   const getStrategyType = () => {
     if (!summary) return "";
     const stops = summary.pit_stops;
     if (stops === 1) return "One-stop strategy";
     if (stops === 2) return "Two-stop strategy";
-    if (stops >= 3) return "Aggressive strategy";
+    if (stops >= 3) return "Aggressive multi-stop";
     return "No-stop";
   };
 
-  const getDegradationWarning = (stint) => {
-    if (stint.compound === "SOFT" && stint.laps > 18) return "⚠️ High degradation";
-    if (stint.compound === "MEDIUM" && stint.laps > 30) return "⚠️ Stretching tyres";
-    if (stint.compound === "HARD" && stint.laps > 45) return "⚠️ Very long stint";
-    return "";
+  const getDegWarn = stint => {
+    if (stint.compound === "SOFT"   && stint.laps > 18) return "HIGH DEG";
+    if (stint.compound === "MEDIUM" && stint.laps > 30) return "STRETCHING";
+    if (stint.compound === "HARD"   && stint.laps > 45) return "VERY LONG";
+    return null;
   };
 
-  const maxLoss =
-    optimal && optimal.stints
-      ? Math.max(...optimal.stints.map(s => s.time_loss || 0))
-      : 0;
-
+  /* ── OLD UI layout with index.css classes ── */
   return (
-    <div>
-      <h1>Stint Analysis</h1>
+    <div className="min-h-screen relative overflow-hidden" style={{ background: "var(--bg)" }}>
 
-      <div style={{ marginBottom: "12px" }}>
-        <label>Driver: </label>
-        <select
-          value={selectedDriver}
-          onChange={(e) => setSelectedDriver(e.target.value)}
-        >
-          {drivers.map(d => (
-            <option key={d.driver_number} value={d.driver_number}>
-              {d.full_name}
-            </option>
-          ))}
-        </select>
+      {/* Ambient glows */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full blur-[130px]"
+          style={{ background: "rgba(225,6,0,0.06)" }} />
+        <div className="absolute bottom-0 -right-48 w-[500px] h-[500px] rounded-full blur-[100px]"
+          style={{ background: "rgba(30,30,30,0.4)" }} />
       </div>
 
-      <button onClick={fetchStints}>Load Stints</button>
+      {/* Grid texture */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.025]"
+        style={{
+          backgroundImage: "linear-gradient(var(--white) 1px,transparent 1px),linear-gradient(90deg,var(--white) 1px,transparent 1px)",
+          backgroundSize: "40px 40px",
+        }} />
 
-      {loading && <p>Loading...</p>}
+      <div className="pw-page relative z-10">
 
-      {/* 🔥 TIMELINE */}
-      {!loading && stints.length > 0 && summary && (
-        <div style={{ marginTop: "20px" }}>
-          <h2>Race Timeline</h2>
+        {/* Header */}
+        <div className="pw-eyebrow">RACE ENGINEERING</div>
+        <h1 className="pw-title">
+          STINT
+          <span className="pw-title-red"> ANALYSIS</span>
+        </h1>
+        <p className="pw-subtitle">PIT STRATEGY · TYRE PERFORMANCE · RACE PACE</p>
+        <div className="pw-divider" />
 
-          <div style={{ position: "relative", width: "100%" }}>
-            <div style={{ display: "flex", height: "40px" }}>
-              {stints.map((s, i) => {
-                const width = (s.laps / totalLaps) * 100;
-                const color = TYRE_COLORS[s.compound] || "#ccc";
-
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      width: `${width}%`,
-                      backgroundColor: color,
-                      border: "1px solid black",
-                      textAlign: "center",
-                      fontSize: "12px",
-                      color: s.compound === "HARD" ? "black" : "white"
-                    }}
-                  >
-                    {s.compound}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* PIT MARKERS */}
-            {pits.map((p, i) => {
-              const left = (p.lap / totalLaps) * 100;
-
-              return (
-                <div
-                  key={i}
-                  style={{
-                    position: "absolute",
-                    left: `${left}%`,
-                    top: 0,
-                    height: "40px",
-                    width: "2px",
-                    backgroundColor: "black"
-                  }}
-                />
-              );
-            })}
-          </div>
-
-          {/* PIT INFO */}
-          <div style={{ marginTop: "10px" }}>
-            <h3>Pit Stops</h3>
-            {pits.map((p, i) => (
-              <p key={i}>
-                Lap {p.lap} → Pit ({p.duration ?? "?"}s)
-              </p>
-            ))}
+        {/* Driver selector */}
+        <div className="pw-card mb-6 p-6" style={{ borderTop: "2px solid var(--border-red)" }}>
+          <div className="pw-eyebrow mb-4">SELECT DRIVER</div>
+          <div className="flex items-center gap-4">
+            <select className="pw-select" value={selectedDriver} onChange={e => setSelectedDriver(e.target.value)}>
+              {drivers.map(d => (
+                <option key={d.driver_number} value={d.driver_number}>{d.full_name}</option>
+              ))}
+            </select>
           </div>
         </div>
-      )}
 
-      {/* SUMMARY */}
-      {!loading && summary && (
-        <div style={{ marginTop: "20px", marginBottom: "20px" }}>
-          <h2>Strategy Summary</h2>
+        {loading && <div className="pw-loading">Loading stint data...</div>}
 
-          <p><strong>Strategy:</strong> {summary.strategy}</p>
-          <p><strong>Type:</strong> {getStrategyType()}</p>
-          <p><strong>Total Laps:</strong> {summary.total_laps}</p>
-          <p><strong>Stints:</strong> {summary.stint_count}</p>
-          <p><strong>Pit Stops:</strong> {summary.pit_stops}</p>
+        {!loading && stints.length > 0 && summary && (
+          <>
+            {/* Race Timeline card */}
+            <div className="relative overflow-hidden rounded-3xl mb-5"
+              style={{
+                background: "linear-gradient(135deg, var(--bg-card) 0%, var(--bg) 100%)",
+                border: "1px solid var(--border)",
+                boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+              }}>
+              <div className="absolute top-0 left-0 right-0 h-[2px]"
+                style={{ background: "linear-gradient(90deg, var(--red) 60%, transparent)" }} />
 
-          <h3>Tyre Usage</h3>
-          <ul>
-            {Object.entries(summary.tyre_usage || {}).map(([tyre, laps]) => (
-              <li key={tyre}>
-                {tyre}: {laps} laps
-              </li>
-            ))}
-          </ul>
+              <div className="px-7 py-6">
+                <div className="pw-eyebrow mb-4">RACE TIMELINE</div>
 
-          <p>
-            <strong>Longest Stint:</strong>{" "}
-            {summary.longest_stint?.compound} ({summary.longest_stint?.laps} laps)
-          </p>
-
-          <p>
-            <strong>Shortest Stint:</strong>{" "}
-            {summary.shortest_stint?.compound} ({summary.shortest_stint?.laps} laps)
-          </p>
-        </div>
-      )}
-
-      {/* TABLE */}
-      {!loading && stints.length > 0 && (
-        <table border="1" cellPadding="10">
-          <thead>
-            <tr>
-              <th>Stint</th>
-              <th>Tyre</th>
-              <th>Laps</th>
-              <th>Lap Range</th>
-              <th>Insight</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stints.map((s, i) => (
-              <tr
-                key={i}
-                className={
-                  optimal?.problem_stint?.stint === s.stint
-                    ? "bg-red-500/20"
-                    : optimal?.best_stint?.stint === s.stint
-                    ? "bg-green-500/20"
-                    : ""
-                }
-              >
-                <td>{s.stint}</td>
-                <td>{s.compound}</td>
-                <td>{s.laps}</td>
-                <td>{s.lap_start} - {s.lap_end}</td>
-                <td>
-                    {getDegradationWarning(s)}
-                    {optimal?.stints?.find(st => st.stint === s.stint)?.overstayed && (
-                        <div className="text-red-400 text-xs mt-1">
-                        ⚠️ Stayed out too long
+                {/* Tyre bar */}
+                <div className="relative mb-3">
+                  <div className="flex rounded-lg overflow-hidden" style={{ height: "36px" }}>
+                    {stints.map((s, i) => {
+                      const width = (s.laps / totalLaps) * 100;
+                      const color = TYRE_COLORS[s.compound] || "var(--muted)";
+                      return (
+                        <div key={i} style={{
+                          width: `${width}%`,
+                          background: `${color}22`,
+                          borderRight: "1px solid rgba(0,0,0,0.3)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          <span style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: "13px", color }}>
+                            {TYRE_LABEL[s.compound] || s.compound[0]}
+                          </span>
                         </div>
-                    )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+                      );
+                    })}
+                  </div>
+                  {/* Pit markers */}
+                  {pits.map((p, i) => (
+                    <div key={i} style={{
+                      position: "absolute", left: `${(p.lap / totalLaps) * 100}%`, top: 0,
+                      width: "2px", height: "36px", background: "#f5c518",
+                      transform: "translateX(-50%)",
+                    }} />
+                  ))}
+                </div>
 
-      {optimal && (
-        <div className="mt-6 p-4 bg-gray-900 rounded-xl">
-            <h2 className="text-xl font-bold mb-3">Strategy Comparison</h2>
+                {/* Tyre legend */}
+                <div className="flex gap-4 flex-wrap mb-4">
+                  {Object.entries(TYRE_COLORS).map(([compound, color]) => (
+                    <div key={compound} className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
+                      <span className="pw-subtitle">{compound}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5" style={{ background: "#f5c518" }} />
+                    <span className="pw-subtitle">PIT STOP</span>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-3 gap-4 text-center">
-            
-            <div>
-                <p className="text-gray-400">Real Strategy</p>
-                <p className="text-lg font-semibold">{optimal.real_time.toFixed(2)}s</p>
+                {/* Pit list */}
+                {pits.length > 0 && (
+                  <div className="flex gap-3 flex-wrap pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+                    {pits.map((p, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                        style={{ background: "var(--bg-card2)", border: "1px solid rgba(245,197,24,0.2)" }}>
+                        <span className="pw-subtitle" style={{ color: "#f5c518" }}>PIT {i + 1}</span>
+                        <span className="pw-subtitle">LAP {p.lap}</span>
+                        {p.duration && <span className="pw-subtitle">{p.duration}s</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div>
-                <p className="text-gray-400">Optimal Strategy</p>
-                <p className="text-lg font-semibold text-green-400">
-                {optimal.optimal_time.toFixed(2)}s
-                </p>
+            {/* Race Summary card */}
+            <div className="relative overflow-hidden rounded-3xl mb-5"
+              style={{
+                background: "linear-gradient(135deg, var(--bg-card) 0%, var(--bg) 100%)",
+                border: "1px solid var(--border)",
+                boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+              }}>
+              <div className="absolute top-0 left-0 right-0 h-[2px]"
+                style={{ background: "linear-gradient(90deg, var(--red) 60%, transparent)" }} />
+
+              <div className="px-7 py-6">
+                <div className="pw-eyebrow mb-4">RACE SUMMARY</div>
+                <div className="grid gap-6 mb-4"
+                  style={{ gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))" }}>
+                  {[
+                    { label: "STRATEGY",   value: getStrategyType() },
+                    { label: "TOTAL LAPS", value: summary.total_laps },
+                    { label: "PIT STOPS",  value: summary.pit_stops  },
+                    { label: "STINTS",     value: stints.length       },
+                  ].map(({ label, value }) => (
+                    <div key={label}>
+                      <div className="pw-subtitle mb-1">{label}</div>
+                      <div className="font-bold" style={{ fontFamily: "var(--font-head)", fontSize: "18px", color: "var(--white)" }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Tyre usage */}
+                {summary.tyre_usage && (
+                  <div className="pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+                    <div className="pw-subtitle mb-3">TYRE USAGE</div>
+                    <div className="flex gap-3 flex-wrap">
+                      {Object.entries(summary.tyre_usage).map(([tyre, laps]) => (
+                        <div key={tyre} className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                          style={{
+                            background: "var(--bg-card2)",
+                            border: `1px solid ${TYRE_COLORS[tyre] || "var(--muted)"}30`,
+                          }}>
+                          <span className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: TYRE_COLORS[tyre] || "var(--muted)" }} />
+                          <span className="font-bold" style={{ fontFamily: "var(--font-head)", fontSize: "15px", color: TYRE_COLORS[tyre] || "var(--white)" }}>{tyre}</span>
+                          <span className="pw-subtitle" style={{ color: "var(--muted2)" }}>{laps} LAPS</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div>
-                <p className="text-gray-400">Time Gain</p>
-                <p className="text-lg font-semibold text-yellow-400">
-                -{optimal.time_gain.toFixed(2)}s
-                </p>
-            </div>
+            {/* Stint Breakdown card */}
+            <div className="relative overflow-hidden rounded-3xl mb-5"
+              style={{
+                background: "linear-gradient(135deg, var(--bg-card) 0%, var(--bg) 100%)",
+                border: "1px solid var(--border)",
+                boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+              }}>
+              <div className="absolute top-0 left-0 right-0 h-[2px]"
+                style={{ background: "linear-gradient(90deg, var(--red) 60%, transparent)" }} />
 
+              <div className="px-7 py-6">
+                <div className="pw-eyebrow mb-4">STINT BREAKDOWN</div>
+
+                {/* Header */}
+                <div className="grid gap-2 pb-3 mb-1"
+                  style={{
+                    gridTemplateColumns: "60px 80px 60px 100px 1fr",
+                    borderBottom: "1px solid var(--border)",
+                  }}>
+                  {["STINT", "TYRE", "LAPS", "RANGE", "INSIGHT"].map(h => (
+                    <div key={h} className="pw-subtitle">{h}</div>
+                  ))}
+                </div>
+
+                {/* Rows */}
+                {stints.map((s, i) => {
+                  const isWorst  = optimal?.problem_stint?.stint === s.stint;
+                  const isBest   = optimal?.best_stint?.stint   === s.stint;
+                  const warn     = getDegWarn(s);
+                  const overstayed = optimal?.stints?.find(st => st.stint === s.stint)?.overstayed;
+
+                  return (
+                    <div key={i} className="grid gap-2 py-3 items-center"
+                      style={{
+                        gridTemplateColumns: "60px 80px 60px 100px 1fr",
+                        borderBottom: i < stints.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                        background: isWorst ? "rgba(225,6,0,0.05)" : isBest ? "rgba(34,197,94,0.05)" : "transparent",
+                        borderLeft: isWorst ? "2px solid rgba(225,6,0,0.5)" : isBest ? "2px solid rgba(34,197,94,0.5)" : "2px solid transparent",
+                        paddingLeft: "8px",
+                      }}>
+                      <span className="pw-subtitle" style={{ fontSize: "11px" }}>S{s.stint}</span>
+
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center font-black"
+                          style={{
+                            fontFamily: "var(--font-head)", fontSize: "10px",
+                            background: `${TYRE_COLORS[s.compound] || "var(--muted)"}20`,
+                            border: `1px solid ${TYRE_COLORS[s.compound] || "var(--muted)"}`,
+                            color: TYRE_COLORS[s.compound] || "var(--muted)",
+                          }}>
+                          {TYRE_LABEL[s.compound] || s.compound[0]}
+                        </div>
+                        <span className="font-medium" style={{ fontFamily: "var(--font-head)", fontSize: "13px", color: "var(--muted2)" }}>{s.compound}</span>
+                      </div>
+
+                      <span className="font-bold" style={{ fontFamily: "var(--font-head)", fontSize: "18px", color: "var(--white)" }}>{s.laps}</span>
+                      <span className="pw-subtitle">{s.lap_start}–{s.lap_end}</span>
+
+                      <div className="flex gap-2 flex-wrap">
+                        {warn && (
+                          <span className="pw-subtitle px-2 py-0.5 rounded"
+                            style={{ color: "#f59e0b", background: "rgba(245,158,11,0.1)" }}>
+                            ⚠ {warn}
+                          </span>
+                        )}
+                        {overstayed && (
+                          <span className="pw-subtitle px-2 py-0.5 rounded"
+                            style={{ color: "var(--red)", background: "rgba(225,6,0,0.1)" }}>
+                            OVERSTAYED
+                          </span>
+                        )}
+                        {isBest && (
+                          <span className="pw-subtitle px-2 py-0.5 rounded"
+                            style={{ color: "#22c55e", background: "rgba(34,197,94,0.1)" }}>
+                            BEST
+                          </span>
+                        )}
+                        {isWorst && (
+                          <span className="pw-subtitle px-2 py-0.5 rounded"
+                            style={{ color: "var(--red)", background: "rgba(225,6,0,0.1)" }}>
+                            WEAKEST
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="h-4" style={{ background: "linear-gradient(to top, rgba(10,10,20,0.6), transparent)" }} />
             </div>
-        </div>
+          </>
         )}
 
-        {optimal?.problem_stint && (
-            <div className="mt-4 p-4 bg-red-900/30 rounded-xl border border-red-500">
-                <h3 className="text-lg font-bold text-red-400">Weakest Stint</h3>
-                
-                <p className="mt-2">
-                Stint {optimal.problem_stint.stint} lost{" "}
-                <span className="font-semibold text-red-300">
-                    {optimal.problem_stint.time_loss.toFixed(2)}s
-                </span>
-                </p>
+        {/* Strategy Comparison card */}
+        {optimal && (
+          <div className="relative overflow-hidden rounded-3xl mb-5"
+            style={{
+              background: "linear-gradient(135deg, var(--bg-card) 0%, var(--bg) 100%)",
+              border: "1px solid var(--border)",
+              borderTop: "2px solid var(--border-red)",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
+            }}>
 
-                <p className="text-sm text-gray-400 mt-1">
-                Avg: {optimal.problem_stint.avg.toFixed(2)}s per lap
-                </p>
-            </div>
-        )}
+            <div className="px-7 py-6">
+              <div className="pw-eyebrow mb-5">STRATEGY COMPARISON</div>
 
-      {optimal && optimal.stints && (
-        <div className="mt-6 p-4 bg-gray-900 rounded-xl">
-          <h2 className="text-xl font-bold mb-2">Stint Performance</h2>
-          <p className="text-sm text-gray-400 mb-3">
-            Time lost vs optimal pace
-          </p>
+              {/* Strategy metrics */}
+              <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
+                {[
+                  { label: "REAL STRATEGY",    value: formatTime(optimal.real_time),    color: "var(--muted2)" },
+                  { label: "OPTIMAL STRATEGY", value: formatTime(optimal.optimal_time), color: "#22c55e" },
+                  { label: "TIME GAIN",        value: `-${formatTime(optimal.time_gain)}`,   color: "#f5c518" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="text-center rounded-xl p-4"
+                    style={{ background: "var(--bg-card2)" }}>
+                    <div className="pw-subtitle mb-2">{label}</div>
+                    <div className="font-bold" style={{ fontFamily: "var(--font-head)", fontSize: "28px", color, marginTop: "8px" }}>{value}</div>
+                  </div>
+                ))}
+              </div>
 
-          <div className="space-y-3">
-            {optimal.stints.map((stint, index) => {
-              const width =
-                maxLoss > 0
-                  ? (stint.time_loss / maxLoss) * 100
-                  : 0;
-
-              const isWorst =
-                stint.stint === optimal.problem_stint?.stint;
-
-              const isBest =
-                stint.stint === optimal.best_stint?.stint;
-
-              if (!stint.time_loss || Math.max(0, stint.time_loss) === 0) {
-                return null; // 🚫 skip this stint completely
-                }
-
-            return (
-            <div key={stint.stint}>
-                <div className="flex justify-between text-sm mb-1">
-                <span>
-                    Stint {index + 1}
-                    <span className="ml-2 text-gray-400 text-xs">
-                    ({stint.avg.toFixed(2)}s/lap)
+              {/* Weakest stint */}
+              {optimal.problem_stint && (
+                <div className="rounded-xl p-4 mb-4"
+                  style={{ background: "rgba(225,6,0,0.06)", border: "1px solid rgba(225,6,0,0.2)" }}>
+                  <div className="pw-subtitle mb-2" style={{ color: "var(--red)" }}>WEAKEST STINT — S{optimal.problem_stint.stint}</div>
+                  <div className="flex items-baseline gap-3">
+                    <span className="font-bold" style={{ fontFamily: "var(--font-head)", fontSize: "28px", color: "var(--red)" }}>
+                      +{formatTime(optimal.problem_stint.time_loss)}
                     </span>
-                </span>
-
-                <span>
-                    {Math.max(0, stint.time_loss).toFixed(2)}s
-                </span>
+                    <span className="pw-subtitle">LOST · AVG {formatTime(optimal.problem_stint.avg)}</span>
+                  </div>
                 </div>
+              )}
 
-                <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
-                <div
-                    className={`h-3 rounded-full transition-all duration-500 ${
-                    isWorst
-                        ? "bg-red-500"
-                        : isBest
-                        ? "bg-green-400"
-                        : "bg-blue-400"
-                    }`}
-                    style={{
-                    width: `${Math.max(0, Math.min(100, width))}%`
-                    }}
-                ></div>
+              {/* Stint performance bars */}
+              {optimal.stints && (
+                <div className="flex flex-col gap-3">
+                  <div className="pw-subtitle">STINT PERFORMANCE — TIME LOST VS OPTIMAL</div>
+                  {optimal.stints.map((stint, idx) => {
+                    if (!stint.time_loss || stint.time_loss <= 0) return null;
+                    const width    = maxLoss > 0 ? (stint.time_loss / maxLoss) * 100 : 0;
+                    const isWorst  = stint.stint === optimal.problem_stint?.stint;
+                    const isBest   = stint.stint === optimal.best_stint?.stint;
+                    const barColor = isWorst ? "var(--red)" : isBest ? "#22c55e" : "#3b82f6";
+
+                    return (
+                      <div key={stint.stint}>
+                        <div className="flex justify-between mb-1">
+                          <span className="pw-subtitle" style={{ color: "var(--muted2)" }}>
+                            STINT {idx + 1} · {formatTime(stint.avg)}/lap
+                          </span>
+                          <span className="pw-subtitle" style={{ color: barColor }}>
+                            +{formatTime(Math.max(0, stint.time_loss))}
+                          </span>
+                        </div>
+                        <div className="rounded-full overflow-hidden" style={{ height: "4px", background: "var(--border)" }}>
+                          <div className="h-full rounded-full transition-all duration-700"
+                            style={{
+                              width: `${Math.max(0, Math.min(100, width))}%`,
+                              background: barColor,
+                            }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+              )}
             </div>
-            );
-            })}
-          </div>
-        </div>
-      )}
 
-      {!loading && stints.length === 0 && (
-        <p style={{ marginTop: "20px" }}>No stint data available.</p>
-      )}
+            <div className="h-4" style={{ background: "linear-gradient(to top, rgba(10,10,20,0.6), transparent)" }} />
+          </div>
+        )}
+
+        {!loading && stints.length === 0 && (
+          <div className="pw-loading">No stint data available.</div>
+        )}
+
+        <div className="pw-footer">F1 Analytics · Stint Analysis</div>
+      </div>
     </div>
   );
 }

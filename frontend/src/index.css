@@ -1,42 +1,197 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* ================================================================
+   PITWALL — Global Design System
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700;800&family=Barlow:wght@300;400;500;600&family=Share+Tech+Mono&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg:         #07070f;
+  --bg-card:    #0f1117;
+  --bg-card2:   #131620;
+  --bg-hover:   #161b24;
+  --border:     rgba(255,255,255,0.06);
+  --border-red: rgba(225,6,0,0.6);
+  --red:        #e10600;
+  --white:      #f0f0f0;
+  --muted:      #5a6070;
+  --muted2:     #8891a0;
+  --font-head:  'Barlow Condensed', sans-serif;
+  --font-body:  'Barlow', sans-serif;
+  --font-mono:  'Share Tech Mono', monospace;
+  --transition: 220ms cubic-bezier(0.22,1,0.36,1);
 }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: monospace;
-  font-size: 14px;
-  padding: 0;
-  background: #fff;
-  color: #000;
+  background-color: var(--bg);
+  color: var(--white);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-button {
-  cursor: pointer;
+/* ── Text selection ── */
+::selection {
+  background: rgba(225, 6, 0, 0.25);
+  color: #ffffff;
 }
 
-a {
-  text-decoration: none;
-  color: #0000ee;
+/* ── Hide number input spinners globally ── */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
-a:hover {
-  text-decoration: underline;
+/* ── Hide scrollbar utility ── */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-h1 { margin-bottom: 12px; }
-h2 { margin: 16px 0 8px; }
-h3 { margin: 12px 0 6px; }
+/* ── Smooth scrolling ── */
+html { scroll-behavior: smooth; }
 
-table {
-  border-collapse: collapse;
+/* ── Typography Utilities ── */
+.font-head { font-family: var(--font-head); }
+.font-mono  { font-family: var(--font-mono); }
+
+/* ── Standard Page Layout ── */
+.pw-page {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 40px;
 }
 
-p {
+/* ── Eyebrow ── */
+.pw-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--red);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.pw-eyebrow::before {
+  content: '';
+  width: 24px;
+  height: 2px;
+  background: var(--red);
+}
+
+/* ── Title ── */
+.pw-title {
+  font-family: var(--font-head);
+  font-size: clamp(40px, 8vw, 72px);
+  font-weight: 800;
+  line-height: 0.9;
+  text-transform: uppercase;
+  font-style: italic;
   margin-bottom: 8px;
 }
+.pw-title-red { color: var(--red); }
 
-ul {
-  padding-left: 20px;
+/* ── Subtitle ── */
+.pw-subtitle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* ── Divider ── */
+.pw-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border) 0%, transparent 100%);
+  margin: 32px 0;
+}
+
+/* ── Card ── */
+.pw-card {
+  /* background: var(--bg-card); */
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+  background: rgba(15, 17, 23, 0.85);
+  backdrop-filter: blur(6px);
+}
+.pw-card:hover {
+  border-color: rgba(255,255,255,0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+}
+
+/* ── Select ── */
+.pw-select {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--white);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 8px 30px 8px 12px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%235a6070' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+.pw-select:focus { border-color: var(--red); }
+
+/* ── Loading / Error states ── */
+.pw-loading {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.pw-error {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--red);
+  text-transform: uppercase;
+}
+
+/* ── Footer ── */
+.pw-footer {
+  text-align: center;
+  padding: 40px 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+  margin-top: 80px;
 }

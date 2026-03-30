@@ -101,6 +101,8 @@ const STREAK_DATA = [...Array(22)].map((_, i) => ({
 
 /* ─── Dashboard ───────────────────────────────────────────── */
 export default function Dashboard() {
+  const navigate = useNavigate();
+
   const dashboardRef  = useRef(null);
   const carRigRef     = useRef(null);
   const streaksRef    = useRef(null);
@@ -245,6 +247,7 @@ export default function Dashboard() {
     <div ref={dashboardRef} className="dashboard">
       {/* ── Background layers ── */}
       <div className="bg-grid" />
+      <div className="bg-ambient" />
       <div className="bg-scanlines" />
       <div className="bg-vignette" />
       <div className="bg-floor-glow" />
@@ -265,7 +268,9 @@ export default function Dashboard() {
         <span className="telemetry-item">SOFT — 4 LAPS</span>
         <span className="telemetry-item">DRS OPEN</span>
         <span className="telemetry-item">344 KM/H</span>
-        <span className="telemetry-live">● LIVE</span>
+        <button onClick={() => navigate("/about")} className="ml-auto">
+          <span className="telemetry-live" style={{ fontSize: "14px", fontWeight: "600" }}>Sri Karthik</span>
+        </button>
       </div>
 
       {/* ── Full-viewport stage ── */}
@@ -333,9 +338,38 @@ export default function Dashboard() {
         <span className="footer-dot">●</span>
         <span>RACE INTELLIGENCE</span>
         <span className="footer-spacer" />
-        <span>2025 SEASON</span>
+        <span>2026 SEASON</span>
         <span className="footer-dot">●</span>
         <span>OpenF1 API</span>
+        <span className="footer-dot">●</span>
+
+        {/* ── Subtle About Dev entry point ── */}
+        <button
+          onClick={() => navigate("/about")}
+          style={{
+            fontFamily: "inherit",
+            fontSize: "inherit",
+            letterSpacing: "inherit",
+            textTransform: "inherit",
+            color: "inherit",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            opacity: 0.45,
+            transition: "opacity 220ms, color 220ms",
+            padding: 0,
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.opacity = "1";
+            e.currentTarget.style.color = "#f0f0f0";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.opacity = "0.45";
+            e.currentTarget.style.color = "";
+          }}
+        >
+          BUILT BY KARTHIK
+        </button>
       </footer>
     </div>
   );
