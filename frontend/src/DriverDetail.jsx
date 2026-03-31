@@ -69,11 +69,27 @@ function DriverDetail() {
       setPerformance(Array.isArray(perfData) ? perfData : []);
       if (Array.isArray(sessionsData)) {
         setSessions(sessionsData);
-        setYears([...new Set(sessionsData.map(s => s.year))].sort((a, b) => b - a));
+        const uniqueYears = [...new Set(sessionsData.map(s => s.year))].sort((a, b) => b - a);
+        setYears(uniqueYears);
+        if (uniqueYears.length > 0) {
+          setSelectedYear(uniqueYears[0]);
+        }
       }
       setLoading(false);
     });
   }, [id]);
+
+  useEffect(() => {
+    if (!selectedYear || sessions.length === 0) return;
+
+    const filtered = sessions.filter(
+      s => String(s.year) === String(selectedYear)
+    );
+
+    if (filtered.length > 0) {
+      setSelectedSession(filtered[filtered.length - 1]); // 🔥 LAST item = latest
+    }
+  }, [selectedYear, sessions]);
 
   useEffect(() => {
     if (!selectedSession?.session_key) return;
@@ -104,7 +120,9 @@ function DriverDetail() {
   );
 
   const accent = driver.team_colour || "#e10600";
-  const raceSessions = sessions.filter(s => String(s.year) === String(selectedYear));
+  const raceSessions = sessions
+  .filter(s => String(s.year) === String(selectedYear))
+  .sort((a, b) => new Date(a.date_start) - new Date(b.date_start)); // ASCENDING
   const chartData = laps.map(l => ({ lap: l.lap, time: l.time }));
   const validTimes = chartData.map(d => d.time).filter(Boolean);
   const avgTime = validTimes.length ? validTimes.reduce((a, b) => a + b, 0) / validTimes.length : null;
@@ -226,7 +244,7 @@ function DriverDetail() {
               <select
                 className="bg-[#131620] border border-white/[0.06] rounded-lg text-white font-mono text-[10px] px-3 py-2 cursor-pointer outline-none focus:border-red-500 appearance-none"
                 value={selectedYear}
-                onChange={e => { setSelectedYear(e.target.value); setSelectedSession(null); }}
+                onChange={e => { setSelectedYear(e.target.value); }}
               >
                 <option value="">YEAR</option>
                 {years.map(y => <option key={y} value={y}>{y}</option>)}
