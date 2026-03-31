@@ -4,21 +4,41 @@ import API_BASE from "./config";
 
 function Teams() {
   const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/teams`)
-      .then((res) => res.json())
-      .then((data) => setTeams(data))
-      .catch((err) => console.log(err));
+      .then(res => res.json())
+      .then(data => { setTeams(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(err => { setError(err.message); setLoading(false); });
   }, []);
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#07070f]">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-10 h-10 rounded-full border-2 border-red-500 border-t-transparent animate-spin" />
+        <p className="font-mono text-xs tracking-widest uppercase text-zinc-600">Loading teams…</p>
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#07070f]">
+      <p className="font-mono text-xs tracking-widest uppercase text-red-500">Error: {error}</p>
+    </div>
+  );
 
   return (
     <div className="min-h-screen relative overflow-hidden">
 
+      {/* Ambient blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-red-700/[0.06] blur-[120px]" />
         <div className="absolute top-1/2 -right-60 w-[500px] h-[500px] rounded-full bg-red-900/[0.05] blur-[100px]" />
       </div>
+
+      {/* Grid texture */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.025]"
         style={{
           backgroundImage: "linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)",
@@ -29,38 +49,23 @@ function Teams() {
 
         {/* Header */}
         <div className="mb-12">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="h-px w-8 bg-red-500" />
-            <span className="text-[10px] font-black tracking-[0.3em] uppercase text-red-500 font-mono">
-              Constructors
-            </span>
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl font-black uppercase tracking-tight font-mono leading-none text-white">
-            Teams
+          <div className="pw-eyebrow">CONSTRUCTORS</div>
+          <h1 className="pw-title">
+            TEAMS
+            <span className="pw-title-red">CHAMPIONSHIP</span>
           </h1>
-
-          <p className="mt-3 text-sm tracking-widest uppercase font-mono text-zinc-500">
-            {teams.length > 0 ? `${teams.length} Teams · Active Season` : "Loading grid…"}
+          <p className="pw-subtitle">
+            {teams.length > 0 ? `${teams.length} TEAMS · ACTIVE SEASON` : "LOADING GRID…"}
           </p>
-
-          <div className="mt-8 h-px bg-gradient-to-r from-red-500/30 via-white/5 to-transparent" />
+          <div className="pw-divider" />
         </div>
 
         {/* Grid */}
-        {teams.length === 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-44 rounded-2xl animate-pulse border bg-white/[0.03] border-white/[0.05]" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {teams.map((team) => (
-              <TeamCard key={team.id} team={team} />
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          {teams.map(team => (
+            <TeamCard key={team.id} team={team} />
+          ))}
+        </div>
 
         {/* Footer */}
         <div className="mt-16 flex items-center gap-3">

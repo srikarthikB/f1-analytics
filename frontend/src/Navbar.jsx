@@ -1,98 +1,245 @@
-import { Link, useLocation } from "react-router-dom";
+import { NavLink, Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 const NAV_LINKS = [
-  { to: "/drivers",               label: "Drivers"   },
-  { to: "/teams",                 label: "Teams"     },
-  { to: "/standings/drivers",     label: "Standings" },
-  { to: "/races",                 label: "Races"     },
-  { to: "/compare",               label: "Compare"   },
-  { to: "/strategy-simulator",    label: "Strategy"  },
+  { to: "/drivers",            label: "Drivers"   },
+  { to: "/teams",              label: "Teams"     },
+  { to: "/standings",          label: "Standings" },
+  { to: "/races",              label: "Races"     },
+  { to: "/compare",            label: "Compare"   },
+  { to: "/strategy-simulator", label: "Strategy"  },
+  { to: "/fantasy",            label: "Fantasy"   },
 ];
 
-function Navbar() {
-  const location = useLocation();
+export default function Navbar() {
+  const { pathname } = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-  const isActive = (path) =>
-    location.pathname === path ||
-    (path !== "/" && location.pathname.startsWith(path));
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
 
   return (
-    <nav className="sticky top-0 z-50 w-full backdrop-blur-xl border-b bg-[#07070f]/80 border-white/[0.06] shadow-[0_1px_0_rgba(255,255,255,0.04),0_4px_24px_rgba(0,0,0,0.5)]">
-      <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
+    <>
+      <nav style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+        background: scrolled
+          ? "rgba(7,7,15,0.97)"
+          : "rgba(10,10,15,0.94)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        borderBottom: `1px solid ${scrolled ? "rgba(225,6,0,0.18)" : "rgba(255,255,255,0.06)"}`,
+        transition: "background 300ms ease, border-color 300ms ease",
+      }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "0 32px",
+          height: "52px",
+          maxWidth: "1400px",
+          margin: "0 auto",
+          gap: "16px",
+        }}>
 
-      <div className="mx-auto max-w-7xl px-6 sm:px-10 flex items-center justify-between h-14">
-
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="relative w-6 h-6 flex items-center">
-            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5">
-              <path d="M4 4 L14 12 L4 20" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12 4 L22 12 L12 20" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4"/>
+          {/* ── Logo ── */}
+          <Link
+            to="/"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginRight: "32px",
+              textDecoration: "none",
+              flexShrink: 0,
+            }}
+          >
+            <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
+              <path d="M0 7L5 0L10 7L5 14L0 7Z" fill="#e10600" />
+              <path d="M8 7L13 0L18 7L13 14L8 7Z" fill="#e10600" opacity="0.45" />
             </svg>
+            <span style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontWeight: 700,
+              fontSize: "15px",
+              letterSpacing: "0.14em",
+              color: "#f0f0f0",
+              textTransform: "uppercase",
+            }}>
+              PITWALL
+            </span>
+          </Link>
+
+          {/* ── Desktop Links ── */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "2px",
+            flex: 1,
+            justifyContent: "center",
+          }}
+            className="pw-nav-links"
+          >
+            {NAV_LINKS.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                style={({ isActive }) => ({
+                  fontFamily: "'Share Tech Mono', monospace",
+                  fontSize: "10px",
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: isActive ? "#f0f0f0" : "#5a6070",
+                  padding: "6px 14px 4px",
+                  textDecoration: "none",
+                  borderBottom: isActive ? "2px solid #e10600" : "2px solid transparent",
+                  transition: "color 200ms ease, border-color 200ms ease",
+                  whiteSpace: "nowrap",
+                })}
+                onMouseEnter={e => {
+                  const isActive = e.currentTarget.style.borderBottomColor === "rgb(225, 6, 0)";
+                  if (!isActive) e.currentTarget.style.color = "#e10600";
+                }}
+                onMouseLeave={e => {
+                  const isActive = e.currentTarget.style.borderBottomColor === "rgb(225, 6, 0)";
+                  if (!isActive) e.currentTarget.style.color = "#5a6070";
+                }}
+              >
+                {label}
+              </NavLink>
+            ))}
           </div>
-          <span className="text-[15px] font-black tracking-[0.12em] uppercase font-mono text-white group-hover:text-red-500 transition-colors duration-200">
-            PitWall
-          </span>
-        </Link>
 
-        {/* Nav links (desktop) */}
-        <div className="hidden sm:flex items-center gap-1">
-          {NAV_LINKS.map(({ to, label }) => {
-            const active = isActive(to);
-            return (
-              <Link key={to} to={to} className="relative flex flex-col items-center group px-3.5 py-2">
-                <span className={`text-[11px] font-black tracking-[0.18em] uppercase font-mono transition-colors duration-200
-                  ${active ? "text-white" : "text-zinc-500 group-hover:text-zinc-200"}`}>
-                  {label}
-                </span>
-                <span className={`absolute bottom-0 left-3.5 right-3.5 h-[2px] rounded-full transition-all duration-300
-                  ${active
-                    ? "bg-gradient-to-r from-red-500 to-orange-400 opacity-100 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
-                    : "bg-white/0 group-hover:bg-white/[0.12] opacity-0 group-hover:opacity-100"
-                  }`}/>
-                <span className={`absolute inset-0 rounded-lg transition-opacity duration-200
-                  ${active ? "opacity-0" : "opacity-0 group-hover:opacity-100 bg-white/[0.04]"}`}/>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Right: Live badge */}
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border bg-white/[0.04] border-white/[0.06]">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-500">Live</span>
+          {/* ── LIVE badge ── */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "7px",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "20px",
+            padding: "5px 14px",
+            fontFamily: "'Share Tech Mono', monospace",
+            fontSize: "10px",
+            letterSpacing: "0.16em",
+            color: "#f0f0f0",
+            flexShrink: 0,
+          }}>
+            <span style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              background: "#22c55e",
+              boxShadow: "0 0 6px #22c55e",
+              animation: "pwLivePulse 1.8s ease-in-out infinite",
+              display: "block",
+            }} />
+            LIVE
           </div>
 
-          {/* Mobile active dot */}
-          <div className="sm:hidden flex items-center gap-1">
-            {NAV_LINKS.map(({ to }) =>
-              isActive(to) ? (
-                <span key={to} className="w-1.5 h-1.5 rounded-full bg-red-500" />
-              ) : null
+          {/* ── Mobile Hamburger ── */}
+          <button
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMenuOpen(v => !v)}
+            style={{
+              display: "none",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "6px",
+              color: "#f0f0f0",
+              flexShrink: 0,
+            }}
+            className="pw-hamburger"
+          >
+            {menuOpen ? (
+              /* X icon */
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M2 2L16 16M16 2L2 16" stroke="#f0f0f0" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            ) : (
+              /* Bars icon */
+              <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
+                <rect y="0"  width="18" height="1.5" rx="0.75" fill="#f0f0f0" />
+                <rect y="6"  width="12" height="1.5" rx="0.75" fill="#e10600" />
+                <rect y="12" width="18" height="1.5" rx="0.75" fill="#f0f0f0" />
+              </svg>
             )}
-          </div>
+          </button>
         </div>
-      </div>
 
-      {/* Mobile nav strip */}
-      <div className="sm:hidden flex items-center gap-1 overflow-x-auto px-4 pb-3 scrollbar-none">
-        {NAV_LINKS.map(({ to, label }) => {
-          const active = isActive(to);
-          return (
-            <Link key={to} to={to}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest uppercase font-mono transition-all duration-200 border
-                ${active
-                  ? "bg-red-500/10 border-red-400/30 text-red-500"
-                  : "text-zinc-600 border-transparent hover:text-zinc-300 hover:border-white/[0.08]"
-                }`}>
-              {label}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+        {/* ── Mobile Dropdown ── */}
+        {menuOpen && (
+          <div style={{
+            background: "rgba(7,7,15,0.98)",
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            padding: "12px 32px 20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "2px",
+          }}
+            className="pw-mobile-menu"
+          >
+            {NAV_LINKS.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                style={({ isActive }) => ({
+                  fontFamily: "'Share Tech Mono', monospace",
+                  fontSize: "11px",
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  color: isActive ? "#e10600" : "#8891a0",
+                  padding: "10px 0",
+                  textDecoration: "none",
+                  borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  transition: "color 150ms ease",
+                })}
+              >
+                {({ isActive }) => (
+                  <>
+                    <span style={{
+                      width: "4px",
+                      height: "4px",
+                      borderRadius: "50%",
+                      background: isActive ? "#e10600" : "transparent",
+                      border: isActive ? "none" : "1px solid #5a6070",
+                      flexShrink: 0,
+                    }} />
+                    {label}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        )}
+      </nav>
+
+      <style>{`
+        @keyframes pwLivePulse {
+          0%,100% { opacity: 1; }
+          50%      { opacity: 0.35; }
+        }
+
+        @media (max-width: 768px) {
+          .pw-nav-links { display: none !important; }
+          .pw-hamburger { display: flex !important; }
+        }
+
+        @media (min-width: 769px) {
+          .pw-mobile-menu { display: none !important; }
+        }
+      `}</style>
+    </>
   );
 }
-
-export default Navbar;

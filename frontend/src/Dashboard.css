@@ -1,0 +1,337 @@
+/* ================================================================
+   PITWALL — Dashboard.css (Refactored with Design System)
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700;800&family=Barlow:wght@300;400;500;600&family=Share+Tech+Mono&display=swap');
+
+:root {
+  /* Aligned with index.css global system */
+  --bg:        #07070f;
+  --bg-card:   #0f1117;
+  --bg-card2:  #131620;
+  --surface:   rgba(15, 17, 23, 0.85);
+  --border:    rgba(255, 255, 255, 0.06);
+  --border-red: rgba(225, 6, 0, 0.6);
+  --red:       #e10600;
+  --white:     #f0f0f0;
+  --muted:     #5a6070;
+  --muted2:    #8891a0;
+  --font-head: 'Barlow Condensed', sans-serif;
+  --font-body: 'Barlow', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+  --transition: 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+button { background: none; border: none; cursor: pointer; font: inherit; color: inherit; }
+
+.dashboard {
+  width: 100vw;
+  min-height: calc(100vh - 52px);
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--font-body);
+  overflow: hidden;
+  position: relative;
+  will-change: transform;
+  transform-origin: center;
+}
+
+/* Realistic F1 Garage/Track Background */
+.bg-grid {
+  position: absolute;
+  inset: 0;
+
+  background-image: 
+    linear-gradient(
+      rgba(0,0,0,0.35),
+      rgba(0,0,0,0.5)
+    ),
+    url('/garage.png');
+
+  background-size: cover;
+  background-position: center bottom; /* 🔥 IMPORTANT */
+  background-repeat: no-repeat;
+
+  filter: blur(2px) brightness(0.85); /* cinematic depth */
+}
+
+/* Ambient depth: Integration with realistic environment */
+.bg-ambient {
+  position: absolute; inset: 0; pointer-events: none;
+  z-index: 0;
+  background: 
+    /* Top vignette fade */
+    radial-gradient(ellipse 120% 80% at 50% 0%, 
+      rgba(100, 100, 120, 0.08) 0%, 
+      transparent 35%),
+    /* Side lighting integration */
+    radial-gradient(ellipse 60px 300px at 5% 50%, 
+      rgba(80, 120, 180, 0.04) 0%, 
+      transparent 50%),
+    /* Right side accent */
+    radial-gradient(ellipse 60px 300px at 95% 50%, 
+      rgba(80, 120, 180, 0.04) 0%, 
+      transparent 50%);
+}
+
+.bg-ambient::before {
+  content: '';
+  position: absolute;
+  /* Subtle top glow from environment */
+  top: -20%; right: 15%;
+  width: 400px; height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(100, 120, 150, 0.06) 0%, transparent 65%);
+  filter: blur(100px);
+}
+
+.bg-ambient::after {
+  content: '';
+  position: absolute;
+  /* Subtle atmospheric haze */
+  bottom: 0%; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(80, 80, 100, 0.03) 0%, transparent 65%);
+  filter: blur(60px);
+}
+
+/* Subtle texture overlay for realism */
+.bg-scanlines {
+  position: absolute; inset: 0;
+  background: 
+    /* Minimal dust/camera grain for organic feel */
+    repeating-linear-gradient(45deg, 
+      rgba(200, 200, 200, 0.01) 0px, 
+      rgba(200, 200, 200, 0.01) 1px, 
+      transparent 1px, 
+      transparent 2px);
+  background-size: 3px 3px;
+  pointer-events: none; z-index: 0; opacity: 0.3;
+}
+
+.bg-vignette {
+  position: absolute; inset: 0;
+  background: 
+    /* Edge darkening for depth */
+    radial-gradient(ellipse 100% 100% at 50% 50%, 
+      transparent 25%, 
+      rgba(0, 0, 0, 0.35) 75%, 
+      rgba(0, 0, 0, 0.6) 100%);
+  pointer-events: none; z-index: 0;
+}
+
+.bg-floor-glow {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 280px;
+  background: 
+    /* Subtle floor reflection of car glow */
+    radial-gradient(ellipse 75% 100% at 50% 100%, 
+      rgba(225, 6, 0, 0.08) 0%, 
+      rgba(225, 60, 30, 0.03) 35%, 
+      transparent 65%),
+    /* Ambient floor integration */
+    radial-gradient(ellipse 100% 120% at 50% 100%, 
+      rgba(100, 100, 120, 0.02) 0%, 
+      transparent 55%);
+  pointer-events: none; z-index: 1;
+}
+
+/* Telemetry — refined with design system */
+.telemetry-bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+  display: flex; align-items: center; gap: 24px;
+  padding: 12px 32px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; color: var(--muted);
+  opacity: 0;
+  background: rgba(7, 7, 15, 0.5);
+  backdrop-filter: blur(8px);
+}
+
+.telemetry-item { position: relative; }
+
+.telemetry-item + .telemetry-item::before {
+  content: ''; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
+  width: 1px; height: 10px; background: var(--border);
+}
+
+.telemetry-live { margin-left: auto; color: var(--red); animation: livePulse 1.8s ease-in-out infinite; }
+
+@keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* Stage */
+.stage {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  padding-bottom: 8%;
+}
+
+/* Car rig */
+.car-rig {
+  position: relative; width: min(1000px, 95vw); flex-shrink: 0;
+  will-change: transform, filter;
+}
+.car-img {
+  display: block; width: 100%;
+  user-select: none; -webkit-user-drag: none;
+  will-change: filter;
+  animation: brakeGlow 2.5s ease-in-out infinite;
+}
+@keyframes brakeGlow {
+  0%, 100% { filter: drop-shadow(0 0 22px rgba(225,6,0,0.35)); }
+  50%       { filter: drop-shadow(0 0 50px rgba(255,40,0,0.82)); }
+}
+
+/* Streaks */
+.streaks { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: visible; }
+.streak {
+  position: absolute; top: var(--y); left: 0; height: 1px; width: var(--len);
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.9) 35%, rgba(225,6,0,0.75) 65%, transparent 100%);
+  opacity: var(--opacity); will-change: transform;
+}
+
+/* Ground bloom */
+.ground-bloom {
+  position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+  width: 78%; height: 90px;
+  background: radial-gradient(ellipse at center bottom, rgba(225,6,0,0.28) 0%, rgba(225,6,0,0.05) 55%, transparent 75%);
+  pointer-events: none; z-index: 0;
+  animation: bloomPulse 2.2s ease-in-out infinite alternate;
+}
+@keyframes bloomPulse {
+  from { opacity: 0.6; transform: translateX(-50%) scaleX(0.96); }
+  to   { opacity: 1;   transform: translateX(-50%) scaleX(1.06); }
+}
+
+.heat-haze {
+  position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+  width: 60%; height: 80px;
+  background: radial-gradient(ellipse at center, rgba(255,60,0,0.12), transparent 70%);
+  filter: blur(18px); opacity: 0.5; pointer-events: none;
+  animation: heatWave 2s ease-in-out infinite;
+}
+@keyframes heatWave {
+  0%, 100% { transform: translateX(-50%) scaleY(1); }
+  50%       { transform: translateX(-50%) scaleY(1.3); }
+}
+
+/* Reflection */
+.reflection-wrap {
+  position: absolute; top: 100%; left: 0; width: 100%; height: 36%;
+  overflow: hidden; pointer-events: none;
+}
+.car-img--reflect {
+  transform: scaleY(-1); transform-origin: top center;
+  opacity: 0.14; filter: blur(4px) saturate(0.4);
+}
+.reflection-fade {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(10,10,15,0) 0%, rgba(10,10,15,0.6) 40%, rgba(10,10,15,1) 100%);
+}
+
+/* Light sweep */
+.light-sweep {
+  position: absolute; inset: -20%; pointer-events: none; z-index: 5;
+  background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.03) 40%, rgba(255,255,255,0.10) 50%, rgba(255,255,255,0.03) 60%, transparent 80%);
+  opacity: 0; mix-blend-mode: screen; filter: blur(18px); will-change: opacity, transform;
+}
+
+/* Title */
+.title-block {
+  position: absolute; bottom: 7%; left: 50%; transform: translateX(-50%);
+  z-index: 10; text-align: center; pointer-events: none; opacity: 0;
+  will-change: opacity, transform; white-space: nowrap;
+}
+.title-eyebrow { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.32em; color: var(--muted); text-transform: uppercase; margin-bottom: 6px; }
+.title-main { font-family: var(--font-head); font-size: clamp(56px, 11vw, 104px); font-weight: 800; letter-spacing: -0.01em; line-height: 1; }
+.title-pit  { color: var(--white); }
+.title-wall { color: var(--red); }
+.title-rule { width: 36px; height: 2px; background: var(--red); margin: 12px auto 0; transform: scaleX(0); transform-origin: center; will-change: transform; }
+.title-sub  { font-size: 10px; font-weight: 300; letter-spacing: 0.42em; text-transform: uppercase; color: var(--muted); margin-top: 8px; }
+
+/* HUD */
+.hud-left, .hud-right {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  z-index: 15; display: flex; flex-direction: column; gap: 14px;
+  opacity: 0; will-change: opacity, transform;
+}
+.hud-left  { left:  max(40px, 5vw); align-items: flex-start; }
+.hud-right { right: max(40px, 5vw); align-items: flex-end; }
+
+.hud-item {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(14px);
+  cursor: pointer;
+  transition: all var(--transition);
+  animation: hudFloat 3.8s ease-in-out infinite alternate;
+  will-change: transform; min-width: 220px;
+  font-family: var(--font-body);
+}
+
+.hud-right .hud-item { flex-direction: row-reverse; animation-delay: 0.9s; }
+.hud-item:nth-child(2) { animation-delay: 1.6s; }
+.hud-right .hud-item:nth-child(2) { animation-delay: 2.5s; }
+
+@keyframes hudFloat { from { transform: translateY(0px); } to { transform: translateY(-6px); } }
+
+.hud-item:hover {
+  transform: translateY(-3px) scale(1.04) !important;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 30%, transparent), 0 8px 28px rgba(0, 0, 0, 0.6);
+}
+
+.hud-item::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0; transition: opacity var(--transition);
+}
+
+.hud-item:hover::before { opacity: 1; }
+
+.hud-item::after {
+  content: ''; position: absolute; bottom: 5px; right: 5px;
+  width: 8px; height: 8px;
+  border-right: 1px solid var(--accent); border-bottom: 1px solid var(--accent);
+  opacity: 0.3; transition: opacity 0.2s;
+}
+
+.hud-item:hover::after { opacity: 1; }
+.hud-item:hover .hud-arrow { color: var(--accent); transform: translateX(3px); }
+.hud-right .hud-item:hover .hud-arrow { transform: translateX(-3px); }
+
+.hud-icon { width: 22px; height: 22px; color: var(--accent); flex-shrink: 0; }
+.hud-icon svg { width: 100%; height: 100%; }
+.hud-text { display: flex; flex-direction: column; gap: 2px; }
+.hud-right .hud-text { text-align: right; }
+.hud-label { font-family: var(--font-head); font-size: 16px; font-weight: 700; letter-spacing: 0.08em; color: var(--white); line-height: 1; text-transform: uppercase; }
+.hud-sub { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; }
+.hud-arrow { width: 12px; height: 12px; color: var(--muted); flex-shrink: 0; transition: transform 0.2s, color 0.2s; }
+
+/* Corner brackets — refined */
+.corner-tl, .corner-tr, .corner-bl, .corner-br { position: absolute; z-index: 18; width: 22px; height: 22px; opacity: 0; pointer-events: none; }
+.corner-tl { top: 10px; left: 10px; border-top: 1px solid rgba(225, 6, 0, 0.35); border-left: 1px solid rgba(225, 6, 0, 0.35); }
+.corner-tr { top: 10px; right: 10px; border-top: 1px solid rgba(225, 6, 0, 0.35); border-right: 1px solid rgba(225, 6, 0, 0.35); }
+.corner-bl { bottom: 10px; left: 10px; border-bottom: 1px solid rgba(225, 6, 0, 0.35); border-left: 1px solid rgba(225, 6, 0, 0.35); }
+.corner-br { bottom: 10px; right: 10px; border-bottom: 1px solid rgba(225, 6, 0, 0.35); border-right: 1px solid rgba(225, 6, 0, 0.35); }
+
+/* Footer — refined with design system */
+.dash-footer {
+  position: absolute; bottom: 0; left: 0; right: 0; z-index: 20;
+  padding: 10px 32px; border-top: 1px solid var(--border);
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.18em; color: var(--muted);
+  display: flex; align-items: center; gap: 14px; opacity: 0;
+  background: rgba(7, 7, 15, 0.5);
+  backdrop-filter: blur(8px);
+  text-transform: uppercase;
+}
+
+.footer-dot { color: var(--red); }
+.footer-spacer { flex: 1; }
+
+@media (max-width: 780px) {
+  .hud-left, .hud-right { position: static; transform: none; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .hud-item { min-width: 130px; }
+  .title-block { bottom: 4%; }
+}
