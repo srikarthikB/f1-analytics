@@ -11,7 +11,7 @@ import DriverComparision from "./DriverComparision.jsx";
 import StrategySimulator from "./StrategySimulator.jsx";
 import RaceDetail from "./RaceDetail";
 import StintAnalysis from "./StintAnalysis.jsx";
-import FantasyMode from "./Fantasymode.jsx";
+import FantasyMode from "./FantasyMode.jsx";
 import AboutDev from "./AboutDev.jsx";
 
 function App() {
