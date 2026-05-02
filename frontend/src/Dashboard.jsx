@@ -78,10 +78,11 @@ function HudItem({ to, label, sub, icon, accent, side }) {
   const navigate = useNavigate();
   return (
     <button
-      className="hud-item"
+      className="hud-item btn-glitch-fill"
       style={{ "--accent": accent }}
       onClick={() => navigate(to)}
     >
+      <span className="hud-scanlines" aria-hidden="true" />
       <span className="hud-icon">{icon}</span>
       <span className="hud-text">
         <span className="hud-label">{label}</span>
@@ -239,6 +240,12 @@ export default function Dashboard() {
       ease: "sine.inOut",
       delay: 2.4,
     });
+
+    tl.call(() => {
+      if (carRigRef.current) {
+        carRigRef.current.classList.add('car-rig--idle');
+      }
+    }, [], ">+=0.1");
 
     return () => tl.kill();
   }, []);

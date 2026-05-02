@@ -53,7 +53,13 @@ button { background: none; border: none; cursor: pointer; font: inherit; color: 
   background-position: center bottom; /* 🔥 IMPORTANT */
   background-repeat: no-repeat;
 
-  filter: blur(2px) brightness(0.85); /* cinematic depth */
+  filter: blur(2px) brightness(0.85); animation: bgDrift 22s ease-in-out infinite alternate;
+  transform-origin: center bottom;
+}
+
+@keyframes bgDrift {
+  0%   { transform: scale(1.0) translateY(0px); }
+  100% { transform: scale(1.04) translateY(-6px); }
 }
 
 /* Ambient depth: Integration with realistic environment */
@@ -147,6 +153,7 @@ button { background: none; border: none; cursor: pointer; font: inherit; color: 
   opacity: 0;
   background: rgba(7, 7, 15, 0.5);
   backdrop-filter: blur(8px);
+  box-shadow: 0 0 20px rgba(225, 6, 0, 0.15);
 }
 
 .telemetry-item { position: relative; }
@@ -156,7 +163,18 @@ button { background: none; border: none; cursor: pointer; font: inherit; color: 
   width: 1px; height: 10px; background: var(--border);
 }
 
-.telemetry-live { margin-left: auto; color: var(--red); animation: livePulse 1.8s ease-in-out infinite; }
+.telemetry-live {
+  margin-left: auto;
+  color: var(--red);
+  animation: livePulse 1.8s ease-in-out infinite;
+  text-shadow: 0 0 10px rgba(225, 6, 0, 0.7), 0 0 22px rgba(225, 6, 0, 0.35);
+  letter-spacing: 0.12em;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1;   text-shadow: 0 0 10px rgba(225,6,0,0.7), 0 0 24px rgba(225,6,0,0.4); }
+  50%       { opacity: 0.3; text-shadow: 0 0 4px rgba(225,6,0,0.2); }
+}
 
 @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
@@ -261,34 +279,69 @@ button { background: none; border: none; cursor: pointer; font: inherit; color: 
 
 .hud-item {
   position: relative; display: flex; align-items: center; gap: 10px;
-  padding: 14px 18px; background: var(--surface);
-  border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(14px);
+  padding: 14px 18px;
+  background: linear-gradient(135deg,
+    rgba(15, 17, 23, 0.92) 0%,
+    rgba(19, 22, 32, 0.88) 50%,
+    rgba(12, 14, 20, 0.95) 100%
+  );
+  border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(16px);
   cursor: pointer;
   transition: all var(--transition);
   animation: hudFloat 3.8s ease-in-out infinite alternate;
   will-change: transform; min-width: 220px;
   font-family: var(--font-body);
+  overflow: hidden;
 }
 
-.hud-right .hud-item { flex-direction: row-reverse; animation-delay: 0.9s; }
-.hud-item:nth-child(2) { animation-delay: 1.6s; }
-.hud-right .hud-item:nth-child(2) { animation-delay: 2.5s; }
+.hud-item:nth-child(1) { animation-delay: 0s; }
+.hud-item:nth-child(2) { animation-delay: 0.4s; }
+
+.hud-right .hud-item:nth-child(1) { animation-delay: 0s; }
+.hud-right .hud-item:nth-child(2) { animation-delay: 0.4s; }
 
 @keyframes hudFloat { from { transform: translateY(0px); } to { transform: translateY(-6px); } }
 
 .hud-item:hover {
-  transform: translateY(-3px) scale(1.04) !important;
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 30%, transparent), 0 8px 28px rgba(0, 0, 0, 0.6);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--accent) 30%, transparent),
+    0 0 40px color-mix(in srgb, var(--accent) 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 20%, transparent);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent) 6%, rgba(15, 17, 23, 0.95)) 0%,
+    rgba(19, 22, 32, 0.90) 100%
+  );
 }
 
 .hud-item::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0; transition: opacity var(--transition);
+  content: '';
+  position: absolute;
+  top: 0; left: -100%; right: auto;
+  width: 60%; height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 40%,
+    rgba(255, 255, 255, 0.09) 50%,
+    rgba(255, 255, 255, 0.04) 60%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.1s;
+  pointer-events: none;
+  z-index: 1;
 }
 
-.hud-item:hover::before { opacity: 1; }
+.hud-item:hover::before {
+  opacity: 1;
+  animation: hudSweep 0.55s ease forwards;
+}
+
+@keyframes hudSweep {
+  from { left: -60%; }
+  to   { left: 160%; }
+}
 
 .hud-item::after {
   content: ''; position: absolute; bottom: 5px; right: 5px;
@@ -334,4 +387,112 @@ button { background: none; border: none; cursor: pointer; font: inherit; color: 
   .hud-left, .hud-right { position: static; transform: none; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 8px; }
   .hud-item { min-width: 130px; }
   .title-block { bottom: 4%; }
+}
+
+
+/* Glitch animation keyframes */
+@keyframes glitch {
+  0%   { background-color: transparent; transform: translateX(0); }
+  25%  { background-color: rgba(225, 6, 0, 0.18); transform: translateX(-6px); letter-spacing: 0.14em; }
+  35%  { background-color: rgba(59, 130, 246, 0.12); transform: translateX(5px); }
+  59%  { opacity: 0.7; }
+  60%  { background-color: rgba(16, 185, 129, 0.10); transform: translateX(-4px); filter: blur(1.5px); }
+  80%  { filter: blur(0px); opacity: 1; }
+  100% { background-color: transparent; transform: translateX(0); }
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.btn-glitch-fill:hover,
+.btn-glitch-fill:focus-visible {
+  animation: glitch 0.22s ease forwards;
+  border-color: var(--accent, var(--red)) !important;
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--accent, var(--red)) 45%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--accent, var(--red)) 8%, transparent);
+}
+
+.btn-glitch-fill:hover .hud-arrow,
+.btn-glitch-fill:focus-visible .hud-arrow {
+  animation: blink 0.12s step-start infinite;
+  color: var(--accent, var(--red));
+}
+
+.btn-glitch-fill:hover .hud-sub,
+.btn-glitch-fill:focus-visible .hud-sub {
+  animation: blink 0.18s step-start infinite;
+}
+
+.btn-glitch-fill:active {
+  animation: none;
+  background: none;
+  border-color: var(--accent, var(--red)) !important;
+  color: var(--accent, var(--red));
+  filter: none;
+}
+
+.btn-glitch-fill:active .hud-arrow,
+.btn-glitch-fill:active .hud-sub {
+  animation: none;
+}
+
+@keyframes ambientBreathe {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.04); }
+}
+
+.bg-ambient {
+  animation: ambientBreathe 8s ease-in-out infinite;
+}
+
+@keyframes carIdleFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  30%       { transform: translateY(-3px) rotate(0.08deg); }
+  70%       { transform: translateY(2px) rotate(-0.06deg); }
+}
+
+.car-rig--idle {
+  animation: carIdleFloat 4.5s ease-in-out infinite;
+}
+
+.hud-item .hud-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(255, 255, 255, 0.012) 3px,
+    rgba(255, 255, 255, 0.012) 4px
+  );
+  pointer-events: none;
+  border-radius: 8px;
+  z-index: 0;
+}
+
+.hud-item .hud-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(255, 255, 255, 0.012) 3px,
+    rgba(255, 255, 255, 0.012) 4px
+  );
+  pointer-events: none;
+  border-radius: 8px;
+  z-index: 0;
+}
+
+@keyframes carIdleFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  30%       { transform: translateY(-3px) rotate(0.08deg); }
+  70%       { transform: translateY(2px) rotate(-0.06deg); }
+}
+
+.car-rig--idle {
+  animation: carIdleFloat 4.5s ease-in-out infinite;
 }
