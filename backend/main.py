@@ -5,6 +5,9 @@ from typing import Optional
 import requests
 import math
 import time
+import threading
+import time
+import requests
 
 app = FastAPI()
 
@@ -45,6 +48,18 @@ def cache_get(key):
 def cache_set(key, value):
     _cache[key] = (value, time.time())
 
+
+def self_ping():
+    while True:
+        try:
+            requests.get("https://pitwall-gul0.onrender.com/ping")
+            print("Ping sent")
+        except Exception as e:
+            print("Ping failed:", e)
+
+        time.sleep(600)
+
+
 # ── Helper: get the latest completed race session_key ─────────────────────────
 def get_latest_race_session_key(year: int = None):
     cache_key = f"latest_session_{year}"
@@ -71,6 +86,12 @@ def get_latest_race_session_key(year: int = None):
     latest = sorted(past_sessions, key=lambda x: x["date_start"], reverse=True)[0]
     cache_set(cache_key, latest["session_key"])
     return latest["session_key"]
+
+
+@app.get("/ping")
+def ping():
+    return {"message": "awake"}
+
 
 # ── /drivers ──────────────────────────────────────────────────────────────────
 @app.get("/drivers")
@@ -632,3 +653,5 @@ def get_optimal_strategy(session_key: int, driver_number: int):
     result = {"real_time": real_total, "optimal_time": opt_total, "time_gain": real_total - opt_total, "total_laps": len(valid_times), "best_stint_avg": best_avg, "stints": filtered, "problem_stint": max(filtered, key=lambda x: x["time_loss"]), "best_stint": min(filtered, key=lambda x: x["time_loss"])}
     cache_set(cache_key, result)
     return result
+
+threading.Thread(target=self_ping, daemon=True).start()
